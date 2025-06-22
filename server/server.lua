@@ -4,7 +4,6 @@ local goldPanUse = {}
 
 
 -- Utilities functions 
-
 local function giveItem(_source, item, count, meta)
     exports.vorp_inventory:addItem(_source, item, count, meta)
 end
@@ -23,8 +22,6 @@ end
 
 
 -- Generalize Bucket Fill
-
-
 local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyMsg)
     if canCarry(_source, outputItem, 1) then
         takeItem(_source, inputItem, 1)
@@ -36,7 +33,6 @@ local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyM
 end
 
 --Usable items 
-
 exports.vorp_inventory:registerUsableItem(Config.emptyMudBucket, function(data)
     TriggerClientEvent('bcc-goldpanning:useEmptyMudBucket', data.source, data.item.amount)
     exports.vorp_inventory:closeInventory(data.source)
@@ -56,7 +52,6 @@ if Config.useWaterItems then
 end
 
 -- Server Events - Buckets
-
 RegisterServerEvent('bcc-goldpanning:mudBuckets')
 AddEventHandler('bcc-goldpanning:mudBuckets', function()
     handleBucketFill(source, Config.emptyMudBucket, Config.mudBucket, 'receivedEmptyMudBucket', 'cannotCarryMoreMudBuckets')
@@ -68,7 +63,6 @@ AddEventHandler('bcc-goldpanning:waterBuckets', function()
 end)
 
 --Use and Return the Empty
-
 local function useItemAndReturnEmpty(_source, itemFull, itemEmpty, useMsg, receiveMsg, failMsg, successEvent, failureEvent)
     local count = exports.vorp_inventory:getItemCount(_source, nil, itemFull)
     if not canCarry(_source, itemEmpty, 1) then
@@ -102,7 +96,6 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
 end)
 
 -- Tool Durability
-
 RegisterServerEvent('bcc-goldpanning:usegoldPan')
 AddEventHandler('bcc-goldpanning:usegoldPan', function()
     local _source = source
@@ -137,7 +130,6 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
 end)
 
 --Make it pretty and Give Reward
-
 RegisterServerEvent('bcc-goldpanning:placePropGlobal')
 AddEventHandler('bcc-goldpanning:placePropGlobal', function(propName, x, y, z, heading)
     TriggerClientEvent('bcc-goldpanning:spawnPropForAll', -1, propName, x, y, z, heading)
@@ -167,7 +159,6 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
 end)
 
 -- Can you carry it and item return
-
 RegisterServerEvent('bcc-goldpanning:givePropBack')
 AddEventHandler('bcc-goldpanning:givePropBack', function()
     local _source = source
