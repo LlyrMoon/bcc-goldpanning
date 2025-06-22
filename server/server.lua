@@ -2,9 +2,8 @@
 VORPcore = exports.vorp_core:GetCore()
 local goldPanUse = {}
 
-----------------------------------------------------------------------------------------------------
--- UTILITIES ----------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+
+-- Utilities functions 
 
 local function giveItem(_source, item, count, meta)
     exports.vorp_inventory:addItem(_source, item, count, meta)
@@ -22,9 +21,9 @@ local function notify(_source, messageKey, duration)
     VORPcore.NotifyRightTip(_source, _U(messageKey), duration or 3000)
 end
 
-----------------------------------------------------------------------------------------------------
--- GENERALIZED BUCKET FILL LOGIC -------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+
+-- Generalize Bucket Fill
+
 
 local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyMsg)
     if canCarry(_source, outputItem, 1) then
@@ -36,9 +35,7 @@ local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyM
     end
 end
 
-----------------------------------------------------------------------------------------------------
--- REGISTER USABLE ITEMS ---------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+--Usable items 
 
 exports.vorp_inventory:registerUsableItem(Config.emptyMudBucket, function(data)
     TriggerClientEvent('bcc-goldpanning:useEmptyMudBucket', data.source, data.item.amount)
@@ -58,9 +55,7 @@ if Config.useWaterItems then
     end)
 end
 
-----------------------------------------------------------------------------------------------------
--- SERVER BUCKET EVENTS ----------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+-- Server Events - Buckets
 
 RegisterServerEvent('bcc-goldpanning:mudBuckets')
 AddEventHandler('bcc-goldpanning:mudBuckets', function()
@@ -72,9 +67,7 @@ AddEventHandler('bcc-goldpanning:waterBuckets', function()
     handleBucketFill(source, Config.emptyWaterBucket, Config.waterBucket, 'receivedEmptyWaterBucket', 'cantCarryMoreEmptyWaterCans')
 end)
 
-----------------------------------------------------------------------------------------------------
--- USE ITEM AND RETURN EMPTY -----------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+--Use and Return the Empty
 
 local function useItemAndReturnEmpty(_source, itemFull, itemEmpty, useMsg, receiveMsg, failMsg, successEvent, failureEvent)
     local count = exports.vorp_inventory:getItemCount(_source, nil, itemFull)
@@ -108,9 +101,7 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
         'bcc-goldpanning:waterUsedSuccess', 'bcc-goldpanning:waterUsedfailure')
 end)
 
-----------------------------------------------------------------------------------------------------
--- TOOL DURABILITY ---------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+-- Tool Durability
 
 RegisterServerEvent('bcc-goldpanning:usegoldPan')
 AddEventHandler('bcc-goldpanning:usegoldPan', function()
@@ -145,9 +136,7 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
     goldPanUse[_source] = os.time() -- ⏱️ Used to limit pan success call timing
 end)
 
-----------------------------------------------------------------------------------------------------
--- PROP + SUCCESS HANDLING -------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+--Make it pretty and Give Reward
 
 RegisterServerEvent('bcc-goldpanning:placePropGlobal')
 AddEventHandler('bcc-goldpanning:placePropGlobal', function(propName, x, y, z, heading)
@@ -177,9 +166,7 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
     goldPanUse[_source] = nil
 end)
 
-----------------------------------------------------------------------------------------------------
--- RETURNS + CARRY CHECKS --------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
+-- Can you carry it and item return
 
 RegisterServerEvent('bcc-goldpanning:givePropBack')
 AddEventHandler('bcc-goldpanning:givePropBack', function()
