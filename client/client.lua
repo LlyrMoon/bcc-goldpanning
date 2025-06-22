@@ -1,6 +1,3 @@
--- Refactored and optimized version of the Gold Panning script
--- Author: ChatGPT + Original Dev
-
 -- Core dependency setups
 VORPcore = exports.vorp_core:GetCore()
 BccUtils = exports['bcc-utils'].initiate()
