@@ -19,6 +19,28 @@ local useWaterBucketPrompt = promptGroup:RegisterPrompt(_U('promptWaterBucket'),
 local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys.G, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
+-- IS NEAR WATER UTILITY
+local function IsNearWater()
+    local playerPed = PlayerPedId()
+    local coords = GetEntityCoords(playerPed, true)
+    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, coords.x, coords.y, coords.z)
+    local isInAllowedZone = false
+    print(isInAllowedZone)
+    for i = 1, #Config.waterTypes do
+        local waterZone = Config.waterTypes[i]
+        if waterHash == joaat(waterZone.hash) and IsPedOnFoot(playerPed) and IsEntityInWater(playerPed) then
+            isInAllowedZone = true
+            break
+        end
+    end
+
+    if not isInAllowedZone then
+        VORPcore.NotifyObjective(_U('noWater'), 4000)
+        return false
+    end
+    return true
+end
+
 -- Handlers for using empty mud bucket and empty water bucket from inventory
 RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
 AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
@@ -74,27 +96,6 @@ local function RemoveTable()
 end
 
 -----------------------------------Mud Bucket-----------------------------------
-
-local function IsNearWater()
-    local playerPed = PlayerPedId()
-    local coords = GetEntityCoords(playerPed, true)
-    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, coords.x, coords.y, coords.z)
-    local isInAllowedZone = false
-    print(isInAllowedZone)
-    for i = 1, #Config.waterTypes do
-        local waterZone = Config.waterTypes[i]
-        if waterHash == joaat(waterZone.hash) and IsPedOnFoot(playerPed) and IsEntityInWater(playerPed) then
-            isInAllowedZone = true
-            break
-        end
-    end
-
-    if not isInAllowedZone then
-        VORPcore.NotifyObjective(_U('noWater'), 4000)
-        return false
-    end
-    return true
-end
 
 local activePrompts = {
     mudBucket = false,
