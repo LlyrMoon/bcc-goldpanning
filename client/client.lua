@@ -1,197 +1,226 @@
--- Core dependency setups
-VORPcore = exports.vorp_core:GetCore()
-BccUtils = exports['bcc-utils'].initiate()
-Progressbar = exports['feather-progressbar']:initiate()
-local MiniGame = exports['bcc-minigames']:initiate()
+-- Initialization
+local VORPcore = exports.vorp_core:GetCore()
+local BccUtils = exports['bcc-utils'].initiate()
+local Progressbar = exports["feather-progressbar"]:initiate()
+local MiniGame = exports['bcc-minigames'].initiate()
 
--- State management variables
-local placing, prompt = false, false
-local BuildPrompt, DelPrompt, PlacingObj, TempObj
+local placing = false
+local prompt = false
+local BuildPrompt, DelPrompt, PlacingObj
 local stage = "mudBucket"
-
--- Track placed props
 local props = {}
 local objectCounter = 0
 
--- Set up a prompt group
+-- Prompt Group Setup
 local promptGroup = BccUtils.Prompt:SetupPromptGroup()
+local useMudBucketPrompt = promptGroup:RegisterPrompt(_U('promptMudBucket'), Config.keys.E, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+local useWaterBucketPrompt = promptGroup:RegisterPrompt(_U('promptWaterBucket'), Config.keys.R, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys.G, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
--- Helper to create standard prompts for each gold panning stage
-local function RegisterPanningPrompt(nameKey, key)
-    return promptGroup:RegisterPrompt(_U(nameKey), key, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+local function RemoveTable()
+    TriggerServerEvent('bcc-goldpanning:checkCanCarry', Config.goldwashProp)
 end
 
--- Prompts for each stage
-local useMudBucketPrompt = RegisterPanningPrompt('promptMudBucket', Config.keys.E)
-local useWaterBucketPrompt = RegisterPanningPrompt('promptWaterBucket', Config.keys.R)
-local useGoldPanPrompt = RegisterPanningPrompt('promptPan', Config.keys.G)
-local removeTablePrompt = RegisterPanningPrompt('promptPickUp', Config.keys.F)
+-----------------------------------Mud Bucket-----------------------------------
 
--- Current active prompts toggle table
-local activePrompts = {
-    mudBucket = true,
-    waterBucket = true,
-    goldPan = true,
-    removeTable = true,
-}
+local function IsNearWater()
+    local playerPed = PlayerPedId()
+    local coords = GetEntityCoords(playerPed, true)
+    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, coords.x, coords.y, coords.z)
+    local isInAllowedZone = false
 
--- Resets all prompts to active
-local function ResetActivePrompts()
-    for k in pairs(activePrompts) do
-        activePrompts[k] = true
-    end
-end
-
--- Checks if the player is in a valid water zone
-local function IsPlayerInValidWater()
-    local ped = PlayerPedId()
-    local pos = GetEntityCoords(ped)
-    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, pos.x, pos.y, pos.z)
-    for _, zone in ipairs(Config.waterTypes) do
-        if waterHash == joaat(zone.hash) and IsPedOnFoot(ped) and IsEntityInWater(ped) then
-            return true
-        end
-    end
-    return false
-end
-
--- Generic prompt handler by stage
-local function HandlePrompt(stageKey, prompt, trigger, resetKey)
-    if stage == stageKey and prompt:HasCompleted() and activePrompts[resetKey] then
-        TriggerServerEvent(trigger)
-        activePrompts[resetKey] = false
-    end
-end
-
--- Unified bucket fill handling with animation, water check, and progress bar
-local function HandleBucketFill(serverEvent, animationName, progressText)
-    if not IsPlayerInValidWater() then
-        VORPcore.NotifyObjective(_U('noWater'), 4000)
-        return
-    end
-    local ped = PlayerPedId()
-    Citizen.InvokeNative(0x524B54361229154F, ped, GetHashKey(animationName), -1, true, 0, -1, false)
-    Progressbar.start(progressText, Config.bucketingTime, function()
-        ClearPedTasks(ped, true, true)
-        Citizen.InvokeNative(0xFCCC886EDE3C63EC, ped, 2, true)
-        TriggerServerEvent(serverEvent)
-    end, 'linear', 'rgba(255,255,255,0.8)', '20vw', 'rgba(255,255,255,0.1)', 'rgba(211,211,211,0.5)')
-end
-
--- Universal animation playing function for gold panning and raking
-function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
-    local animTime = time
-    RequestAnimDict(animDict)
-    while not HasAnimDictLoaded(animDict) do Wait(100) end
-
-    local flag = loopUntilTimeOver and 1 or 16
-    if not loopUntilTimeOver then animTime = time end
-
-    TaskPlayAnim(PlayerPedId(), animDict, animName, 1.0, 1.0, animTime, flag, 0, true, 0, false, 0, false)
-
-    if raking then
-        local playerCoords = GetEntityCoords(PlayerPedId())
-        local rakeObj = CreateObject(Config.goldSiftingProp, playerCoords.x, playerCoords.y, playerCoords.z, true, true, false)
-        AttachEntityToEntity(rakeObj, PlayerPedId(), GetEntityBoneIndexByName(PlayerPedId(), "PH_R_Hand"), 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
-        Progressbar.start(_U('siftingGold'), time, function()
-            Wait(5)
-            DeleteObject(rakeObj)
-            ClearPedTasksImmediately(PlayerPedId())
-        end, 'linear', 'rgba(255,255,255,0.8)', '20vw', 'rgba(255,255,255,0.1)', 'rgba(211,211,211,0.5)')
-    else
-        Wait(time)
-        ClearPedTasksImmediately(PlayerPedId())
-    end
-end
-
--- Abstracted prompt setup helper
-function SetupPrompt(controlKey, labelKey)
-    local prompt = Citizen.InvokeNative(0x04F97DE45A519419)
-    PromptSetControlAction(prompt, controlKey)
-    local str = CreateVarString(10, 'LITERAL_STRING', _U(labelKey))
-    PromptSetText(prompt, str)
-    PromptSetEnabled(prompt, false)
-    PromptSetVisible(prompt, false)
-    PromptSetHoldMode(prompt, true)
-    PromptRegisterEnd(prompt)
-    return prompt
-end
-
--- Initialize Build/Delete prompts
-BuildPrompt = SetupPrompt(Config.keys.R, 'BuildPrompt')
-DelPrompt = SetupPrompt(Config.keys.E, 'DelPrompt')
-
--- Handles the entire placement and build process of the gold wash prop
-function PlaceGoldwashProp(propName)
-    local ped = PlayerPedId()
-    local pos = GetEntityCoords(ped)
-    local heading = GetEntityHeading(ped)
-    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, pos.x, pos.y, pos.z)
-
-    local inZone = false
-    for _, zone in ipairs(Config.waterTypes) do
-        if waterHash == GetHashKey(zone.hash) and IsPedOnFoot(ped) and IsEntityInWater(ped) then
-            inZone = true
+    for i = 1, #Config.waterTypes do
+        local waterZone = Config.waterTypes[i]
+        if waterHash == joaat(waterZone.hash) and IsPedOnFoot(playerPed) and IsEntityInWater(playerPed) then
+            isInAllowedZone = true
             break
         end
     end
 
-    if not inZone then
+    if not isInAllowedZone then
+        VORPcore.NotifyObjective(_U('noWater'), 4000)
+        return false
+    end
+    return true
+end
+
+local activePrompts = {
+    mudBucket = false,
+    waterBucket = false,
+    goldPan = false,
+    removeTable = true,
+}
+
+CreateThread(function()
+    while true do
+        Wait(5)
+        local playerPed = PlayerPedId()
+        local playerCoords = GetEntityCoords(playerPed)
+        local prop = GetClosestObjectOfType(playerCoords.x, playerCoords.y, playerCoords.z, 2.0, GetHashKey(Config.goldwashProp), false, false, false)
+
+        if props then
+            for objectid, objdata in pairs(props) do
+                local objCoords = objdata.coords
+                local distance = GetDistanceBetweenCoords(playerCoords, objCoords, true)
+                if distance < 2.0 and objdata.object and not placing then
+                    if DoesEntityExist(TempObj) then
+                        promptGroup:ShowGroup("Gold Panning")
+
+                        useMudBucketPrompt:TogglePrompt(activePrompts.mudBucket and stage == "mudBucket")
+                        useWaterBucketPrompt:TogglePrompt(activePrompts.waterBucket and stage == "waterBucket")
+                        useGoldPanPrompt:TogglePrompt(activePrompts.goldPan and stage == "goldPan")
+                        removeTablePrompt:TogglePrompt(activePrompts.removeTable)
+
+                        if stage == "mudBucket" and useMudBucketPrompt:HasCompleted() and activePrompts.mudBucket then
+                            TriggerServerEvent('bcc-goldpanning:useMudBucket')
+                            activePrompts.mudBucket = false
+                        end
+                        if stage == "waterBucket" and useWaterBucketPrompt:HasCompleted() and activePrompts.waterBucket then
+                            TriggerServerEvent('bcc-goldpanning:useWaterBucket')
+                            activePrompts.waterBucket = false
+                        end
+                        if stage == "goldPan" and useGoldPanPrompt:HasCompleted() and activePrompts.goldPan then
+                            TriggerServerEvent('bcc-goldpanning:usegoldPan')
+                            activePrompts.goldPan = false
+                        end
+                        if removeTablePrompt:HasCompleted() and activePrompts.removeTable then
+                            RemoveTable()
+                            activePrompts.removeTable = false
+                        end
+                    else
+                        ResetActivePrompts()
+                    end
+                else
+                    ResetActivePrompts()
+                end
+            end
+        end
+    end
+end)
+
+function ResetActivePrompts()
+    activePrompts.mudBucket = true
+    activePrompts.waterBucket = true
+    activePrompts.goldPan = true
+    activePrompts.removeTable = true
+end
+
+
+
+
+-----------------------------------PROP STUFF-----------------------------------
+
+-- Utility to setup a prompt
+local function SetupPrompt(promptVar, labelKey, controlKey)
+    local str = _U(labelKey)
+    promptVar = Citizen.InvokeNative(0x04F97DE45A519419)
+    PromptSetControlAction(promptVar, controlKey)
+    str = CreateVarString(10, 'LITERAL_STRING', str)
+    PromptSetText(promptVar, str)
+    PromptSetEnabled(promptVar, false)
+    PromptSetVisible(promptVar, false)
+    PromptSetHoldMode(promptVar, true)
+    PromptRegisterEnd(promptVar)
+    return promptVar
+end
+
+-- Build and Delete prompts
+local BuildPrompt, DelPrompt
+
+local function SetupBuildPrompt()
+    BuildPrompt = SetupPrompt(BuildPrompt, 'BuildPrompt', Config.keys.R)
+end
+
+local function SetupDelPrompt()
+    DelPrompt = SetupPrompt(DelPrompt, 'DelPrompt', Config.keys.E)
+end
+
+RegisterNetEvent('bcc-goldpanning:placeProp')
+AddEventHandler('bcc-goldpanning:placeProp', function(propName)
+    SetupBuildPrompt()
+    SetupDelPrompt()
+    local playerPed = PlayerPedId()
+    local coords = GetEntityCoords(playerPed, true)
+    local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, coords.x, coords.y, coords.z)
+    local pos = coords
+
+    -- Check if in allowed water zone
+    local isInAllowedZone = false
+    for _, waterZone in ipairs(Config.waterTypes) do
+        if waterHash == GetHashKey(waterZone.hash) and IsPedOnFoot(playerPed) and IsEntityInWater(playerPed) then
+            isInAllowedZone = true
+            break
+        end
+    end
+
+    if not isInAllowedZone then
         VORPcore.NotifyObjective(_U('noWater'), 4000)
         TriggerServerEvent('bcc-goldpanning:givePropBack')
         return
     end
 
-    if not HasModelLoaded(propName) then RequestModel(propName) end
-    while not HasModelLoaded(propName) do Wait(5) end
+    local pHead = GetEntityHeading(playerPed)
+    local object = GetHashKey(propName)
+    if not HasModelLoaded(object) then
+        RequestModel(object)
+    end
+    while not HasModelLoaded(object) do
+        Wait(5)
+    end
 
     placing = true
-    PlacingObj = CreateObject(propName, pos.x, pos.y, pos.z, false, true, false)
-    SetEntityHeading(PlacingObj, heading)
+    PlacingObj = CreateObject(object, pos.x, pos.y, pos.z, false, true, false)
+    SetEntityHeading(PlacingObj, pHead)
     SetEntityAlpha(PlacingObj, 51)
-    AttachEntityToEntity(PlacingObj, ped, 0, 0.0, 1.0, -0.7, 0.0, 0.0, 0.0, true, false, false, false, false, true)
+    AttachEntityToEntity(PlacingObj, playerPed, 0, 0.0, 1.0, -0.7, 0.0, 0.0, 0.0, true, false, false, false, false, true)
 
     while placing do
         Wait(10)
         if not prompt then
-            PromptSetEnabled(BuildPrompt, true)
-            PromptSetVisible(BuildPrompt, true)
-            PromptSetEnabled(DelPrompt, true)
-            PromptSetVisible(DelPrompt, true)
+            if BuildPrompt then
+                PromptSetEnabled(BuildPrompt, true)
+                PromptSetVisible(BuildPrompt, true)
+            end
+            if DelPrompt then
+                PromptSetEnabled(DelPrompt, true)
+                PromptSetVisible(DelPrompt, true)
+            end
             prompt = true
         end
 
-        if PromptHasHoldModeCompleted(BuildPrompt) then
+        if BuildPrompt and PromptHasHoldModeCompleted(BuildPrompt) then
             PromptSetEnabled(BuildPrompt, false)
             PromptSetVisible(BuildPrompt, false)
             PromptSetEnabled(DelPrompt, false)
             PromptSetVisible(DelPrompt, false)
             prompt = false
-
-            local propPos = GetEntityCoords(PlacingObj)
-            local propHeading = GetEntityHeading(PlacingObj)
+            local PropPos = GetEntityCoords(PlacingObj, true)
+            local PropHeading = GetEntityHeading(PlacingObj)
             DeleteObject(PlacingObj)
-
-            Progressbar.start(_U('buildingTable'), Config.washBuildTime, function() end, 'linear', 'rgba(255,255,255,0.8)',
-                '20vw', 'rgba(255,255,255,0.1)', 'rgba(211,211,211,0.5)')
-            TaskStartScenarioInPlace(ped, GetHashKey('WORLD_HUMAN_SLEDGEHAMMER'), -1, true, false, false, false)
-            Wait(Config.washBuildTime)
-            ClearPedTasksImmediately(ped)
-
-            TempObj = CreateObject(propName, propPos.x, propPos.y, propPos.z, true, true, true)
-            SetEntityHeading(TempObj, propHeading)
-            PlaceObjectOnGroundProperly(TempObj)
-            placing = false
-
-            if TempObj then
-                objectCounter += 1
-                props["obj_" .. objectCounter] = { object = TempObj, coords = vector3(propPos.x, propPos.y, propPos.z) }
-            else
-                print("Failed to create " .. propName)
+            Progressbar.start(_U('buildingTable'), Config.washBuildTime, function() end,
+                'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
+                'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
+            TaskStartScenarioInPlace(playerPed, GetHashKey('WORLD_HUMAN_SLEDGEHAMMER'), -1, true, false, false, false)
+            Citizen.Wait(Config.washBuildTime)
+            ClearPedTasksImmediately(playerPed)
+            if propName == Config.goldwashProp then
+                TempObj = CreateObject(object, PropPos.x, PropPos.y, PropPos.z, true, true, true)
+                SetEntityHeading(TempObj, PropHeading)
+                PlaceObjectOnGroundProperly(TempObj)
+                placing = false
+                if TempObj then
+                    objectCounter = objectCounter + 1
+                    local objectId = "obj_" .. objectCounter
+                    props[objectId] = { object = TempObj, coords = vector3(PropPos.x, PropPos.y, PropPos.z) }
+                else
+                    print("Failed to create " .. propName)
+                end
             end
             break
-        elseif PromptHasHoldModeCompleted(DelPrompt) then
+        end
+
+        if DelPrompt and PromptHasHoldModeCompleted(DelPrompt) then
             PromptSetEnabled(BuildPrompt, false)
             PromptSetVisible(BuildPrompt, false)
             PromptSetEnabled(DelPrompt, false)
@@ -202,17 +231,67 @@ function PlaceGoldwashProp(propName)
             break
         end
     end
-end
+end)
 
--- Cleanup prompt state on resource stop
 AddEventHandler('onResourceStop', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then return end
+    if (GetCurrentResourceName() ~= resourceName) then
+        return
+    end
     prompt = false
-    PromptSetEnabled(BuildPrompt, false)
-    PromptSetVisible(BuildPrompt, false)
-    PromptSetEnabled(DelPrompt, false)
-    PromptSetVisible(DelPrompt, false)
-    if DoesEntityExist(PlacingObj) then
+    if BuildPrompt then
+        PromptSetEnabled(BuildPrompt, false)
+        PromptSetVisible(BuildPrompt, false)
+    end
+    if DelPrompt then
+        PromptSetEnabled(DelPrompt, false)
+        PromptSetVisible(DelPrompt, false)
+    end
+    if PlacingObj then
         DeleteEntity(PlacingObj)
     end
 end)
+
+
+-----------------------------------Animations-----------------------------------
+
+-- Utility: Play an animation, optionally with a raking prop and progress bar
+function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
+    local playerPed = PlayerPedId()
+    local animTime = time
+    local flag = loopUntilTimeOver and 1 or 16
+
+    -- Request animation dictionary only once
+    RequestAnimDict(animDict)
+    while not HasAnimDictLoaded(animDict) do
+        Wait(50)
+    end
+
+    -- Play animation
+    TaskPlayAnim(playerPed, animDict, animName, 1.0, 1.0, loopUntilTimeOver and -1 or animTime, flag, 0, true, 0, false, 0, false)
+
+    if raking then
+        local playerCoords = GetEntityCoords(playerPed)
+        local rakeObj = CreateObject(Config.goldSiftingProp, playerCoords.x, playerCoords.y, playerCoords.z, true, true, false)
+        AttachEntityToEntity(rakeObj, playerPed, GetEntityBoneIndexByName(playerPed, "PH_R_Hand"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
+        Progressbar.start(_U('siftingGold'), time, function()
+            -- Cleanup after progress bar completes
+            if DoesEntityExist(rakeObj) then
+                DeleteObject(rakeObj)
+            end
+            ClearPedTasksImmediately(playerPed)
+        end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw', 'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
+    else
+        Wait(time)
+        ClearPedTasksImmediately(playerPed)
+    end
+end
+
+-- Utility: Play a scenario in place, freezing the player during the action
+function ScenarioInPlace(hash, time)
+    local playerPed = PlayerPedId()
+    FreezeEntityPosition(playerPed, true)
+    TaskStartScenarioInPlace(playerPed, joaat(hash), time, true, false, false, false)
+    Wait(time)
+    ClearPedTasksImmediately(playerPed)
+    FreezeEntityPosition(playerPed, false)
+end

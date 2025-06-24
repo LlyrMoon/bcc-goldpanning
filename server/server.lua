@@ -1,27 +1,38 @@
--- VORP Gold Panning Mechanic Script (Refactored)
-VORPcore = exports.vorp_core:GetCore()
+-- VORP Gold Panning Mechanic Script (Refactored & Documented)
+
+local VORPcore = exports.vorp_core:GetCore()
 local goldPanUse = {}
 
-
--- Utilities functions 
+-- Utility: Give an item to a player
 local function giveItem(_source, item, count, meta)
     exports.vorp_inventory:addItem(_source, item, count, meta)
 end
 
+-- Utility: Remove an item from a player
 local function takeItem(_source, item, count, meta)
     exports.vorp_inventory:subItem(_source, item, count, meta)
 end
 
+-- Utility: Check if a player can carry an item
 local function canCarry(_source, item, count)
     return exports.vorp_inventory:canCarryItem(_source, item, count, nil)
 end
 
+-- Utility: Notify a player with a localized message
 local function notify(_source, messageKey, duration)
     VORPcore.NotifyRightTip(_source, _U(messageKey), duration or 3000)
 end
 
+-- Utility: Register a usable item and trigger a client event
+local function registerUsableItem(item, clientEvent, take)
+    exports.vorp_inventory:registerUsableItem(item, function(data)
+        TriggerClientEvent(clientEvent, data.source, item)
+        if take then takeItem(data.source, item, 1) end
+        exports.vorp_inventory:closeInventory(data.source)
+    end)
+end
 
--- Generalize Bucket Fill
+-- Generalized bucket fill logic to avoid code duplication
 local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyMsg)
     if canCarry(_source, outputItem, 1) then
         takeItem(_source, inputItem, 1)
@@ -32,37 +43,7 @@ local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyM
     end
 end
 
---Usable items 
-exports.vorp_inventory:registerUsableItem(Config.emptyMudBucket, function(data)
-    TriggerClientEvent('bcc-goldpanning:useEmptyMudBucket', data.source, data.item.amount)
-    exports.vorp_inventory:closeInventory(data.source)
-end)
-
-exports.vorp_inventory:registerUsableItem(Config.goldwashProp, function(data)
-    TriggerClientEvent('bcc-goldpanning:placeProp', data.source, Config.goldwashProp)
-    takeItem(data.source, Config.goldwashProp, 1)
-    exports.vorp_inventory:closeInventory(data.source)
-end)
-
-if Config.useWaterItems then
-    exports.vorp_inventory:registerUsableItem(Config.emptyWaterBucket, function(data)
-        TriggerClientEvent('bcc-goldpanning:useWaterBucket', data.source, data.item.amount)
-        exports.vorp_inventory:closeInventory(data.source)
-    end)
-end
-
--- Server Events - Buckets
-RegisterServerEvent('bcc-goldpanning:mudBuckets')
-AddEventHandler('bcc-goldpanning:mudBuckets', function()
-    handleBucketFill(source, Config.emptyMudBucket, Config.mudBucket, 'receivedEmptyMudBucket', 'cannotCarryMoreMudBuckets')
-end)
-
-RegisterServerEvent('bcc-goldpanning:waterBuckets')
-AddEventHandler('bcc-goldpanning:waterBuckets', function()
-    handleBucketFill(source, Config.emptyWaterBucket, Config.waterBucket, 'receivedEmptyWaterBucket', 'cantCarryMoreEmptyWaterCans')
-end)
-
---Use and Return the Empty
+-- Generalized use-and-return-empty logic for buckets
 local function useItemAndReturnEmpty(_source, itemFull, itemEmpty, useMsg, receiveMsg, failMsg, successEvent, failureEvent)
     local count = exports.vorp_inventory:getItemCount(_source, nil, itemFull)
     if not canCarry(_source, itemEmpty, 1) then
@@ -81,6 +62,25 @@ local function useItemAndReturnEmpty(_source, itemFull, itemEmpty, useMsg, recei
     end
 end
 
+-- Register usable items and trigger appropriate client events
+registerUsableItem(Config.emptyMudBucket, 'bcc-goldpanning:useEmptyMudBucket', false)
+registerUsableItem(Config.goldwashProp, 'bcc-goldpanning:placeProp', true)
+if Config.useWaterItems then
+    registerUsableItem(Config.emptyWaterBucket, 'bcc-goldpanning:useWaterBucket', false)
+end
+
+-- Server Events - Buckets
+RegisterServerEvent('bcc-goldpanning:mudBuckets')
+AddEventHandler('bcc-goldpanning:mudBuckets', function()
+    handleBucketFill(source, Config.emptyMudBucket, Config.mudBucket, 'receivedEmptyMudBucket', 'cannotCarryMoreMudBuckets')
+end)
+
+RegisterServerEvent('bcc-goldpanning:waterBuckets')
+AddEventHandler('bcc-goldpanning:waterBuckets', function()
+    handleBucketFill(source, Config.emptyWaterBucket, Config.waterBucket, 'receivedEmptyWaterBucket', 'cantCarryMoreEmptyWaterCans')
+end)
+
+-- Use a full bucket and return an empty one
 RegisterServerEvent('bcc-goldpanning:useMudBucket')
 AddEventHandler('bcc-goldpanning:useMudBucket', function()
     useItemAndReturnEmpty(source, Config.mudBucket, Config.emptyMudBucket,
@@ -95,7 +95,7 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
         'bcc-goldpanning:waterUsedSuccess', 'bcc-goldpanning:waterUsedfailure')
 end)
 
--- Tool Durability
+-- Tool Durability: Handles gold pan usage and durability reduction
 RegisterServerEvent('bcc-goldpanning:usegoldPan')
 AddEventHandler('bcc-goldpanning:usegoldPan', function()
     local _source = source
@@ -126,19 +126,23 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
     end
 
     TriggerClientEvent('bcc-goldpanning:goldPanUsedSuccess', _source)
-    goldPanUse[_source] = os.time() -- ⏱️ Used to limit pan success call timing
+    goldPanUse[_source] = os.time() -- Used to limit pan success call timing
 end)
 
---Make it pretty and Give Reward
+-- Prop placement: Broadcasts prop placement to all clients
 RegisterServerEvent('bcc-goldpanning:placePropGlobal')
 AddEventHandler('bcc-goldpanning:placePropGlobal', function(propName, x, y, z, heading)
+    -- Security: Validate propName if you have a whitelist!
     TriggerClientEvent('bcc-goldpanning:spawnPropForAll', -1, propName, x, y, z, heading)
 end)
+
+-- Gold panning reward logic, with anti-abuse timer
+local PAN_SUCCESS_TIMEOUT = 30 -- seconds
 
 RegisterServerEvent('bcc-goldpanning:panSuccess')
 AddEventHandler('bcc-goldpanning:panSuccess', function()
     local _source = source
-    if not goldPanUse[_source] or os.time() - goldPanUse[_source] > 30 then
+    if not goldPanUse[_source] or os.time() - goldPanUse[_source] > PAN_SUCCESS_TIMEOUT then
         print("[WARNING] Player " .. _source .. " triggered panSuccess without recent goldPan use.")
         return
     end
@@ -158,7 +162,7 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
     goldPanUse[_source] = nil
 end)
 
--- Can you carry it and item return
+-- Give prop back to player if they can carry it
 RegisterServerEvent('bcc-goldpanning:givePropBack')
 AddEventHandler('bcc-goldpanning:givePropBack', function()
     local _source = source
@@ -170,6 +174,7 @@ AddEventHandler('bcc-goldpanning:givePropBack', function()
     end
 end)
 
+-- Utility events for returning buckets
 RegisterServerEvent('bcc-goldpanning:addMudBack')
 AddEventHandler('bcc-goldpanning:addMudBack', function()
     giveItem(source, Config.emptyMudBucket, 1)
@@ -180,8 +185,10 @@ AddEventHandler('bcc-goldpanning:addWaterBack', function()
     giveItem(source, Config.emptyWaterBucket, 1)
 end)
 
+-- Check if player can carry an item, respond to client
 RegisterServerEvent('bcc-goldpanning:checkCanCarry')
 AddEventHandler('bcc-goldpanning:checkCanCarry', function(itemName)
     local _source = source
+    -- Security: Validate itemName if possible!
     TriggerClientEvent('bcc-goldpanning:canCarryResponse', _source, canCarry(_source, itemName, 1))
 end)
