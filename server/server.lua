@@ -233,3 +233,11 @@ AddEventHandler('bcc-goldpanning:checkCanCarry', function(itemName)
     end
     TriggerClientEvent('bcc-goldpanning:canCarryResponse', _source, canCarry(_source, itemName, 1))
 end)
+-- Clear resources on restart
+AddEventHandler('onResourceStop', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    -- Clean up any server-side state if needed
+    goldPanUse = {}
+    -- Optionally, log or notify that the script was stopped
+    print("[GoldPanning] Resource stopped and state cleared.")
+end)
