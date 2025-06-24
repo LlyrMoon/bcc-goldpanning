@@ -45,6 +45,7 @@ end
 RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
 AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
     if IsNearWater() then
+        Citizen.InvokeNative(0x524B54361229154F, playerPed, GetHashKey('WORLD_HUMAN_BUCKET_FILL'), -1, true, 0, -1, false)
         TriggerServerEvent('bcc-goldpanning:mudBuckets')
     else
         VORPcore.NotifyObjective(_U('noWater'), 4000)
@@ -54,6 +55,7 @@ end)
 RegisterNetEvent('bcc-goldpanning:useWaterBucket')
 AddEventHandler('bcc-goldpanning:useWaterBucket', function()
     if IsNearWater() then
+        Citizen.InvokeNative(0x524B54361229154F, playerPed, GetHashKey('WORLD_HUMAN_BUCKET_FILL'), -1, true, 0, -1, false)
         TriggerServerEvent('bcc-goldpanning:waterBuckets')
     else
         VORPcore.NotifyObjective(_U('noWater'), 4000)
@@ -133,7 +135,17 @@ CreateThread(function()
                             activePrompts.waterBucket = false
                         end
                         if stage == "goldPan" and useGoldPanPrompt:HasCompleted() and activePrompts.goldPan then
-                            TriggerServerEvent('bcc-goldpanning:usegoldPan')
+                            MiniGame.Start('skillcheck', Config.Minigame, function(result)
+                                if result.passed then
+                                    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, true)
+                                    Wait(Config.goldWashTime)
+                                    TriggerServerEvent('bcc-goldpanning:panSuccess')
+                                    stage = "mudBucket"
+                                    ResetActivePrompts()
+                                else
+                                    notify('minigameFailed')
+                                end
+                            end)
                             activePrompts.goldPan = false
                         end
                         if removeTablePrompt:HasCompleted() and activePrompts.removeTable then
@@ -377,6 +389,8 @@ RegisterNetEvent('bcc-goldpanning:mudBucketUsedSuccess')
 AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     notify('usedMudBucket')
     PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
+    stage = "waterBucket"
+    ResetActivePrompts()
 end)
 
 -- Mud Bucket Used Failure
@@ -390,6 +404,8 @@ RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
 AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     notify('usedWaterBucket')
     PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
+    stage = "goldPan"
+    ResetActivePrompts()
 end)
 
 -- Water Used Failure
