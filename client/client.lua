@@ -19,6 +19,35 @@ local useWaterBucketPrompt = promptGroup:RegisterPrompt(_U('promptWaterBucket'),
 local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys.G, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
+-- Handlers for using empty mud bucket and empty water bucket from inventory
+RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
+AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
+    if IsNearWater() then
+        TriggerServerEvent('bcc-goldpanning:mudBuckets')
+    else
+        VORPcore.NotifyObjective(_U('noWater'), 4000)
+    end
+end)
+
+RegisterNetEvent('bcc-goldpanning:useWaterBucket')
+AddEventHandler('bcc-goldpanning:useWaterBucket', function()
+    if IsNearWater() then
+        TriggerServerEvent('bcc-goldpanning:waterBuckets')
+    else
+        VORPcore.NotifyObjective(_U('noWater'), 4000)
+    end
+end)
+
+-- Handler for return table (canCarryResponse)
+RegisterNetEvent('bcc-goldpanning:canCarryResponse')
+AddEventHandler('bcc-goldpanning:canCarryResponse', function(canCarry)
+    if canCarry then
+        TriggerServerEvent('bcc-goldpanning:givePropBack')
+    else
+        VORPcore.NotifyObjective(_U('propFull'), 4000)
+    end
+end)
+
 -- Improved RemoveTable: always finds and deletes the nearest prop
 local function RemoveTable()
     local playerPed = PlayerPedId()
