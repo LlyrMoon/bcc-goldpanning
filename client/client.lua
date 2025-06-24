@@ -1,7 +1,7 @@
 -- Initialization
-local VORPcore = exports.vorp_core:GetCore()
-local BccUtils = exports['bcc-utils'].initiate()
-local Progressbar = exports["feather-progressbar"]:initiate()
+VORPcore = exports.vorp_core:GetCore()
+BccUtils = exports['bcc-utils'].initiate()
+Progressbar = exports["feather-progressbar"]:initiate()
 local MiniGame = exports['bcc-minigames'].initiate()
 
 local placing = false
@@ -10,6 +10,7 @@ local BuildPrompt, DelPrompt, PlacingObj
 local stage = "mudBucket"
 local props = {}
 local objectCounter = 0
+local isAnimating = false -- Prevent animation overlap
 
 -- Prompt Group Setup
 local promptGroup = BccUtils.Prompt:SetupPromptGroup()
@@ -18,8 +19,29 @@ local useWaterBucketPrompt = promptGroup:RegisterPrompt(_U('promptWaterBucket'),
 local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys.G, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
+-- Improved RemoveTable: always finds and deletes the nearest prop
 local function RemoveTable()
-    TriggerServerEvent('bcc-goldpanning:checkCanCarry', Config.goldwashProp)
+    local playerPed = PlayerPedId()
+    local playerCoords = GetEntityCoords(playerPed)
+    local closestObj, closestDist, closestId = nil, 2.0, nil
+    for objectid, objdata in pairs(props) do
+        if objdata.object and DoesEntityExist(objdata.object) then
+            local dist = #(playerCoords - objdata.coords)
+            if dist < closestDist then
+                closestObj = objdata.object
+                closestDist = dist
+                closestId = objectid
+            end
+        end
+    end
+    if closestObj then
+        DeleteEntity(closestObj)
+        props[closestId] = nil
+        TriggerServerEvent('bcc-goldpanning:checkCanCarry', Config.goldwashProp)
+    else
+        VORPcore.NotifyObjective(_U('noTableNearby'), 4000)
+    end
+    ResetActivePrompts()
 end
 
 -----------------------------------Mud Bucket-----------------------------------
@@ -29,7 +51,7 @@ local function IsNearWater()
     local coords = GetEntityCoords(playerPed, true)
     local waterHash = Citizen.InvokeNative(0x5BA7A68A346A5A91, coords.x, coords.y, coords.z)
     local isInAllowedZone = false
-
+    print(isInAllowedZone)
     for i = 1, #Config.waterTypes do
         local waterZone = Config.waterTypes[i]
         if waterHash == joaat(waterZone.hash) and IsPedOnFoot(playerPed) and IsEntityInWater(playerPed) then
@@ -64,7 +86,7 @@ CreateThread(function()
                 local objCoords = objdata.coords
                 local distance = GetDistanceBetweenCoords(playerCoords, objCoords, true)
                 if distance < 2.0 and objdata.object and not placing then
-                    if DoesEntityExist(TempObj) then
+                    if DoesEntityExist(objdata.object) then
                         promptGroup:ShowGroup("Gold Panning")
 
                         useMudBucketPrompt:TogglePrompt(activePrompts.mudBucket and stage == "mudBucket")
@@ -105,9 +127,6 @@ function ResetActivePrompts()
     activePrompts.goldPan = true
     activePrompts.removeTable = true
 end
-
-
-
 
 -----------------------------------PROP STUFF-----------------------------------
 
@@ -238,6 +257,7 @@ AddEventHandler('onResourceStop', function(resourceName)
         return
     end
     prompt = false
+    ResetActivePrompts()
     if BuildPrompt then
         PromptSetEnabled(BuildPrompt, false)
         PromptSetVisible(BuildPrompt, false)
@@ -249,13 +269,20 @@ AddEventHandler('onResourceStop', function(resourceName)
     if PlacingObj then
         DeleteEntity(PlacingObj)
     end
+    -- Remove all placed props on resource stop
+    for objectid, objdata in pairs(props) do
+        if objdata.object and DoesEntityExist(objdata.object) then
+            DeleteEntity(objdata.object)
+        end
+    end
 end)
-
 
 -----------------------------------Animations-----------------------------------
 
 -- Utility: Play an animation, optionally with a raking prop and progress bar
 function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
+    if isAnimating then return end
+    isAnimating = true
     local playerPed = PlayerPedId()
     local animTime = time
     local flag = loopUntilTimeOver and 1 or 16
@@ -274,15 +301,16 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
         local rakeObj = CreateObject(Config.goldSiftingProp, playerCoords.x, playerCoords.y, playerCoords.z, true, true, false)
         AttachEntityToEntity(rakeObj, playerPed, GetEntityBoneIndexByName(playerPed, "PH_R_Hand"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
         Progressbar.start(_U('siftingGold'), time, function()
-            -- Cleanup after progress bar completes
             if DoesEntityExist(rakeObj) then
                 DeleteObject(rakeObj)
             end
             ClearPedTasksImmediately(playerPed)
+            isAnimating = false
         end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw', 'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
         Wait(time)
         ClearPedTasksImmediately(playerPed)
+        isAnimating = false
     end
 end
 
@@ -295,3 +323,47 @@ function ScenarioInPlace(hash, time)
     ClearPedTasksImmediately(playerPed)
     FreezeEntityPosition(playerPed, false)
 end
+
+-- Utility function for notifications (optional, for DRYness)
+local function notify(key, duration)
+    VORPcore.NotifyObjective(_U(key), duration or 4000)
+end
+
+-- Gold Pan Used Success
+RegisterNetEvent('bcc-goldpanning:goldPanUsedSuccess')
+AddEventHandler('bcc-goldpanning:goldPanUsedSuccess', function()
+    notify('goldPanUsed')
+    PlayAnim("script_re", "gold_panner_scoop", 4000, true, false)
+end)
+
+-- Gold Pan Failure
+RegisterNetEvent('bcc-goldpanning:goldPanfailure')
+AddEventHandler('bcc-goldpanning:goldPanfailure', function()
+    notify('noPan')
+end)
+
+-- Mud Bucket Used Success
+RegisterNetEvent('bcc-goldpanning:mudBucketUsedSuccess')
+AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
+    notify('usedMudBucket')
+    PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
+end)
+
+-- Mud Bucket Used Failure
+RegisterNetEvent('bcc-goldpanning:mudBucketUsedfailure')
+AddEventHandler('bcc-goldpanning:mudBucketUsedfailure', function()
+    notify('dontHaveMudBucket')
+end)
+
+-- Water Used Success
+RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
+AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
+    notify('usedWaterBucket')
+    PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
+end)
+
+-- Water Used Failure
+RegisterNetEvent('bcc-goldpanning:waterUsedfailure')
+AddEventHandler('bcc-goldpanning:waterUsedfailure', function()
+    notify('dontHaveWaterBucket')
+end)

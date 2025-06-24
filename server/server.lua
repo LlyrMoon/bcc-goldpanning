@@ -3,19 +3,53 @@
 local VORPcore = exports.vorp_core:GetCore()
 local goldPanUse = {}
 
--- Utility: Give an item to a player
+-- Whitelist for valid prop and item names (add more as needed)
+local validProps = {
+    [Config.goldwashProp] = true
+}
+local validItems = {
+    [Config.goldwashProp] = true,
+    [Config.emptyMudBucket] = true,
+    [Config.mudBucket] = true,
+    [Config.emptyWaterBucket] = true,
+    [Config.waterBucket] = true,
+    [Config.goldPan] = true,
+    [Config.goldWashReward] = true,
+    [Config.extraReward] = true
+}
+
+-- Utility: Give an item to a player, with error handling
 local function giveItem(_source, item, count, meta)
-    exports.vorp_inventory:addItem(_source, item, count, meta)
+    local success, err = pcall(function()
+        exports.vorp_inventory:addItem(_source, item, count, meta)
+    end)
+    if not success then
+        print(("[GoldPanning] Failed to give item %s to %s: %s"):format(item, _source, err))
+        notify(_source, 'inventoryError')
+    end
 end
 
--- Utility: Remove an item from a player
+-- Utility: Remove an item from a player, with error handling
 local function takeItem(_source, item, count, meta)
-    exports.vorp_inventory:subItem(_source, item, count, meta)
+    local success, err = pcall(function()
+        exports.vorp_inventory:subItem(_source, item, count, meta)
+    end)
+    if not success then
+        print(("[GoldPanning] Failed to remove item %s from %s: %s"):format(item, _source, err))
+        notify(_source, 'inventoryError')
+    end
 end
 
--- Utility: Check if a player can carry an item
+-- Utility: Check if a player can carry an item, with error handling
 local function canCarry(_source, item, count)
-    return exports.vorp_inventory:canCarryItem(_source, item, count, nil)
+    local success, result = pcall(function()
+        return exports.vorp_inventory:canCarryItem(_source, item, count, nil)
+    end)
+    if not success then
+        print(("[GoldPanning] Error in canCarry: %s"):format(result))
+        return false
+    end
+    return result
 end
 
 -- Utility: Notify a player with a localized message
@@ -129,10 +163,13 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
     goldPanUse[_source] = os.time() -- Used to limit pan success call timing
 end)
 
--- Prop placement: Broadcasts prop placement to all clients
+-- Prop placement: Broadcasts prop placement to all clients, with validation
 RegisterServerEvent('bcc-goldpanning:placePropGlobal')
 AddEventHandler('bcc-goldpanning:placePropGlobal', function(propName, x, y, z, heading)
-    -- Security: Validate propName if you have a whitelist!
+    if not validProps[propName] then
+        print(("[GoldPanning] Invalid propName from client: %s"):format(tostring(propName)))
+        return
+    end
     TriggerClientEvent('bcc-goldpanning:spawnPropForAll', -1, propName, x, y, z, heading)
 end)
 
@@ -185,10 +222,14 @@ AddEventHandler('bcc-goldpanning:addWaterBack', function()
     giveItem(source, Config.emptyWaterBucket, 1)
 end)
 
--- Check if player can carry an item, respond to client
+-- Check if player can carry an item, respond to client, with validation
 RegisterServerEvent('bcc-goldpanning:checkCanCarry')
 AddEventHandler('bcc-goldpanning:checkCanCarry', function(itemName)
     local _source = source
-    -- Security: Validate itemName if possible!
+    if not validItems[itemName] then
+        print(("[GoldPanning] Invalid itemName from client: %s"):format(tostring(itemName)))
+        TriggerClientEvent('bcc-goldpanning:canCarryResponse', _source, false)
+        return
+    end
     TriggerClientEvent('bcc-goldpanning:canCarryResponse', _source, canCarry(_source, itemName, 1))
 end)
