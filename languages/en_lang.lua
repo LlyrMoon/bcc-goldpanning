@@ -41,5 +41,5 @@ Locales["en_lang"] = {
     inventoryScriptError = "Inventory error: Please relog or contact an admin if this persists.",
     noTableNearby = "No wash table nearby to remove",
     goldPanUsed = "You have used your gold pan",
-    minigameFailed = "You failed the minigame!",
-}
+    minigameFailed = "You failed the minigame!"
+    }
