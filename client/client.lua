@@ -41,6 +41,15 @@ local function IsNearWater()
     return true
 end
 
+--Clean up stubborn buckets
+local function RemoveBucketProp()
+    local playerPed = PlayerPedId()
+    local prop = GetClosestObjectOfType(GetEntityCoords(playerPed), 3.0, GetHashKey("p_wateringcan01x"), false, false, false)
+    if prop ~= 0 then
+        DeleteObject(prop)
+    end
+end
+
 -- Handlers for using empty mud bucket and empty water bucket from inventory
 RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
 AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
@@ -422,6 +431,7 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500) -- Let the scenario finish naturally
             ClearPedTasks(playerPed)
+            RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
         stage = "waterBucket"
@@ -446,11 +456,10 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     FreezeEntityPosition(playerPed, true)
     TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
-        -- Only clear tasks if not cancelled and player is still valid
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            -- Wait a short moment to let the scenario finish naturally
             Wait(500)
             ClearPedTasks(playerPed)
+            RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
         stage = "goldPan"
