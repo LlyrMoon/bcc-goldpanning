@@ -6,19 +6,18 @@ lua54 'yes'
 author 'BCC @Fistsofury'
 description 'Indepth Goldpanning script by BCC'
 
-server_scripts {
-    '/server/*.lua'
-}
-
 shared_scripts {
-    'config.lua',
-    'locale.lua',
-    'languages/*.lua'
+    'config.lua',         -- 1. Config first
+    'locale.lua',         -- 2. Locale loader
+    'languages/*.lua'     -- 3. All language files
 }
 
+server_scripts {
+    'server/*.lua'
+}
 
 client_scripts {
-    '/client/*.lua'
+    'client/*.lua'
 }
 
 dependencies {

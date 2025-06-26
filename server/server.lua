@@ -201,37 +201,28 @@ local PAN_SUCCESS_TIMEOUT = 30 -- seconds
 RegisterServerEvent('bcc-goldpanning:panSuccess')
 AddEventHandler('bcc-goldpanning:panSuccess', function()
     local _source = source
-    local given = 0
-    if goldPanUse[_source] then
-        for i = 1, Config.goldWashRewardAmount do
-            if exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, 1) then
-                exports.vorp_inventory:addItem(_source, Config.goldWashReward, 1)
-                given = given + 1
-            else
-                break
-            end
+    if exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, Config.goldWashRewardAmount) and goldPanUse[_source] then
+        exports.vorp_inventory:addItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
+        VORPcore.NotifyRightTip(_source, _U('receivedGoldFlakes'), 3000)
+        if Config.debug then
+            print("player " .. _source .. " has received " .. Config.goldWashRewardAmount .. " gold flakes")
         end
-        if given > 0 then
-            VORPcore.NotifyRightTip(_source, _U('receivedGoldFlakes') .. " (" .. given .. ")", 3000)
-            if Config.debug then
-                print("player " .. _source .. " has received " .. given .. " gold flakes")
-            end
-        else
-            VORPcore.NotifyRightTip(_source, _U('cantCarryMoreGoldFlakes'), 3000)
-        end
+    else
+        VORPcore.NotifyRightTip(_source, _U('cantCarryMoreGoldFlakes'), 3000)
+    end
 
-        -- Extra reward logic (unchanged)
-        if math.random(100) <= Config.extraRewardChance then
-            if exports.vorp_inventory:canCarryItem(_source, Config.extraReward, Config.extraRewardAmount) then
-                exports.vorp_inventory:addItem(_source, Config.extraReward, Config.extraRewardAmount)
-                VORPcore.NotifyRightTip(_source, _U('receivedExtraReward'), 3000)
-                if Config.debug then
-                    print("player " .. _source .. " has received " .. Config.extraRewardAmount .. " extra reward")
-                end
-            end
+    if math.random(100) <= Config.extraRewardChance and goldPanUse[_source] then
+        exports.vorp_inventory:addItem(_source, Config.extraReward, Config.extraRewardAmount)
+        VORPcore.NotifyRightTip(_source, _U('receivedExtraReward'), 3000)
+        if Config.debug then
+            print("player " .. _source .. " has received " .. Config.extraRewardAmount .. " extra reward")
         end
     end
 
+    if not goldPanUse[_source] then
+        --prob cheater
+        return
+    end
     goldPanUse[_source] = nil
 end)
 
