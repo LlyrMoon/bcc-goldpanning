@@ -178,9 +178,10 @@ CreateThread(function()
                             MiniGame.Start('skillcheck', Config.Minigame, function(result)
                                 if result.passed then
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, true)
-                                    Wait(Config.goldWashTime)
-                                    VORPcore.NotifyObjective("[DEBUG] Triggering panSuccess event", 4000)
+                                    Wait(Config.goldWashTime / 2) -- Wait for half the animation
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
+                                    VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000)
+                                    Wait(Config.goldWashTime / 2) -- Finish the animation
                                     stage = "mudBucket"
                                     ResetActivePrompts()
                                 else
