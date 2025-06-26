@@ -177,6 +177,7 @@ CreateThread(function()
                                 if result.passed then
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, true)
                                     Wait(Config.goldWashTime)
+                                    VORPcore.NotifyObjective("[DEBUG] Triggering panSuccess event", 4000)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
                                     stage = "mudBucket"
                                     ResetActivePrompts()

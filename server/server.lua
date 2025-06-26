@@ -59,6 +59,8 @@ local function giveItem(_source, item, count, meta)
         print(("[GoldPanning] Failed to give item %s to %s: %s"):format(item, _source, err))
         notify(_source, 'inventoryScriptError')
         debugLog(("Failed to give %s to %s: %s"):format(item, _source, err))
+        -- DEBUG NOTIFICATION TO PLAYER
+        VORPcore.NotifyRightTip(_source, "[DEBUG] Failed to give item: " .. tostring(item) .. " (" .. tostring(err) .. ")", 6000)
     end
 end
 
@@ -201,21 +203,34 @@ local PAN_SUCCESS_TIMEOUT = 30 -- seconds
 RegisterServerEvent('bcc-goldpanning:panSuccess')
 AddEventHandler('bcc-goldpanning:panSuccess', function()
     local _source = source
-    if exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, Config.goldWashRewardAmount) and goldPanUse[_source] then
+    -- Debug: Show goldPanUse flag and item name
+    VORPcore.NotifyRightTip(_source, "[DEBUG] goldPanUse: " .. tostring(goldPanUse[_source]), 4000)
+    VORPcore.NotifyRightTip(_source, "[DEBUG] Reward: " .. tostring(Config.goldWashReward) .. " x" .. tostring(Config.goldWashRewardAmount), 4000)
+    -- Debug: Can carry?
+    local canCarry = exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
+    VORPcore.NotifyRightTip(_source, "[DEBUG] canCarry: " .. tostring(canCarry), 4000)
+
+    if canCarry and goldPanUse[_source] then
         exports.vorp_inventory:addItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
         VORPcore.NotifyRightTip(_source, _U('receivedGoldFlakes'), 3000)
         if Config.debug then
-            print("player " .. _source .. " has received " .. Config.goldWashRewardAmount .. " gold flakes")
+            VORPcore.NotifyRightTip(_source, "[DEBUG] Given gold flakes!", 4000)
         end
     else
         VORPcore.NotifyRightTip(_source, _U('cantCarryMoreGoldFlakes'), 3000)
+        if not canCarry then
+            VORPcore.NotifyRightTip(_source, "[DEBUG] Cannot carry gold flakes.", 4000)
+        end
+        if not goldPanUse[_source] then
+            VORPcore.NotifyRightTip(_source, "[DEBUG] goldPanUse flag not set.", 4000)
+        end
     end
 
     if math.random(100) <= Config.extraRewardChance and goldPanUse[_source] then
         exports.vorp_inventory:addItem(_source, Config.extraReward, Config.extraRewardAmount)
         VORPcore.NotifyRightTip(_source, _U('receivedExtraReward'), 3000)
         if Config.debug then
-            print("player " .. _source .. " has received " .. Config.extraRewardAmount .. " extra reward")
+            VORPcore.NotifyRightTip(_source, "[DEBUG] Given extra reward!", 4000)
         end
     end
 

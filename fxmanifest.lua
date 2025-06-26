@@ -8,8 +8,8 @@ description 'Indepth Goldpanning script by BCC'
 
 shared_scripts {
     'config.lua',         -- 1. Config first
-    'locale.lua',         -- 2. Locale loader
-    'languages/*.lua'     -- 3. All language files
+    'languages/*.lua',    -- 2. All language files
+    'locale.lua'          -- 3. Locale loader (must come after languages)
 }
 
 server_scripts {
