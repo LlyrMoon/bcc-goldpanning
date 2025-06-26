@@ -180,10 +180,7 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
     end
 
     TriggerClientEvent('bcc-goldpanning:goldPanUsedSuccess', _source)
-    goldPanUse[_source] = true
-    Citizen.SetTimeout(PAN_SUCCESS_TIMEOUT * 1000, function()
-        goldPanUse[_source] = nil
-    end)
+    goldPanUse[_source] = true  -- <--- Only set here, do not clear with timeout
 end)
 
 -- Prop placement: Broadcasts prop placement to all clients, with validation
@@ -238,7 +235,7 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
         --prob cheater
         return
     end
-    goldPanUse[_source] = nil
+    goldPanUse[_source] = nil  -- <--- Only clear here, after reward logic
 end)
 
 -- Give prop back to player if they can carry it
