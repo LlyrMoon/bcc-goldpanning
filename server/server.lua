@@ -45,6 +45,8 @@ local validItems = {
 
 -- Utility: Give an item to a player, with error handling
 local function giveItem(_source, item, count, meta)
+
+    meta = meta or {}
     local success, err = pcall(function()
         exports.vorp_inventory:addItem(_source, item, count, meta)
     end)
@@ -232,7 +234,7 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
         local added = 0
         for i = 1, Config.goldWashRewardAmount do
             if exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, 1) then
-                exports.vorp_inventory:addItem(_source, Config.goldWashReward, 1)
+                exports.vorp_inventory:addItem(_source, Config.goldWashReward, 1, {})
                 added = added + 1
             else
                 break
