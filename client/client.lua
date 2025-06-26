@@ -41,6 +41,26 @@ local function IsNearWater()
     return true
 end
 
+-- Gold Pan Handling
+local goldPanObj = nil
+
+local function AttachGoldPanProp()
+    local playerPed = PlayerPedId()
+    if goldPanObj and DoesEntityExist(goldPanObj) then
+        DeleteObject(goldPanObj)
+    end
+    local coords = GetEntityCoords(playerPed)
+    goldPanObj = CreateObject(GetHashKey("p_copperpan02x"), coords.x, coords.y, coords.z, true, true, false)
+    AttachEntityToEntity(goldPanObj, playerPed, GetEntityBoneIndexByName(playerPed, "PH_R_Hand"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
+end
+
+local function RemoveGoldPanProp()
+    if goldPanObj and DoesEntityExist(goldPanObj) then
+        DeleteObject(goldPanObj)
+        goldPanObj = nil
+    end
+end
+
 --Clean up stubborn buckets
 local function RemoveBucketProp()
     local playerPed = PlayerPedId()
@@ -187,11 +207,14 @@ CreateThread(function()
                             TriggerServerEvent('bcc-goldpanning:usegoldPan')
                             MiniGame.Start('skillcheck', Config.Minigame, function(result)
                                 if result.passed then
-                                    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, true)
-                                    Wait(Config.goldWashTime / 2) -- Wait for half the animation
+                                    RemoveBucketProp() -- Remove any held bucket prop
+                                    AttachGoldPanProp() -- Attach the pan before animation
+                                    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, false, false)
+                                    Wait(Config.goldWashTime / 2)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
                                     VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000)
-                                    Wait(Config.goldWashTime / 2) -- Finish the animation
+                                    Wait(Config.goldWashTime / 2)
+                                    RemoveGoldPanProp() -- Remove the pan after animation
                                     stage = "mudBucket"
                                     ResetActivePrompts()
                                 else
@@ -345,6 +368,7 @@ AddEventHandler('bcc-goldpanning:placeProp', function(propName)
         end
     end
 end)
+
 
 AddEventHandler('onResourceStop', function(resourceName)
     if (GetCurrentResourceName() ~= resourceName) then
