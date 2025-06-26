@@ -26,5 +26,5 @@ Locales["de_lang"] = {
     DelPrompt = "Aufbau Abbrechen",
     promptPickUp = "Tisch Abbauen",
     propPickup = "Du hast den Waschtisch abgebaut",
-    propFull = "Du kannst den Waschtisch nicht Tragen",
+    propFull = "Du kannst den Waschtisch nicht Tragen"
 }
