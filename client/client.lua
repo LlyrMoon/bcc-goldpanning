@@ -45,20 +45,43 @@ end
 RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
 AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
     if IsNearWater() then
-        Citizen.InvokeNative(0x524B54361229154F, playerPed, GetHashKey('WORLD_HUMAN_BUCKET_FILL'), -1, true, 0, -1, false)
-        TriggerServerEvent('bcc-goldpanning:mudBuckets')
+        local playerPed = PlayerPedId()
+        FreezeEntityPosition(playerPed, true)
+        TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_FILL'), -1, true, false, false, false)
+        Progressbar.start(_U('collectingMud'), Config.bucketingTime, function(cancelled)
+            if cancelled or not DoesEntityExist(playerPed) or IsEntityDead(playerPed) then
+                FreezeEntityPosition(playerPed, false)
+                return
+            end
+            ClearPedTasksImmediately(playerPed)
+            FreezeEntityPosition(playerPed, false)
+            TriggerServerEvent('bcc-goldpanning:mudBuckets')
+        end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
+            'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
-        VORPcore.NotifyObjective(_U('noWater'), 4000)
+        notify('noWater')
     end
 end)
 
+-- Water Bucket: Fill (from inventory)
 RegisterNetEvent('bcc-goldpanning:useWaterBucket')
 AddEventHandler('bcc-goldpanning:useWaterBucket', function()
     if IsNearWater() then
-        Citizen.InvokeNative(0x524B54361229154F, playerPed, GetHashKey('WORLD_HUMAN_BUCKET_FILL'), -1, true, 0, -1, false)
-        TriggerServerEvent('bcc-goldpanning:waterBuckets')
+        local playerPed = PlayerPedId()
+        FreezeEntityPosition(playerPed, true)
+        TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_FILL'), -1, true, false, false, false)
+        Progressbar.start(_U('collectingWater'), Config.bucketingTime, function(cancelled)
+            if cancelled or not DoesEntityExist(playerPed) or IsEntityDead(playerPed) then
+                FreezeEntityPosition(playerPed, false)
+                return
+            end
+            ClearPedTasksImmediately(playerPed)
+            FreezeEntityPosition(playerPed, false)
+            TriggerServerEvent('bcc-goldpanning:waterBuckets')
+        end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
+            'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
-        VORPcore.NotifyObjective(_U('noWater'), 4000)
+        notify('noWater')
     end
 end)
 
@@ -368,7 +391,11 @@ end
 
 -- Utility function for notifications (optional, for DRYness)
 local function notify(key, duration)
-    VORPcore.NotifyObjective(_U(key), duration or 4000)
+    local msg = _U(key)
+    if not msg or msg == key then
+        msg = "[Missing locale: " .. key .. "]"
+    end
+    VORPcore.NotifyObjective(msg, duration or 4000)
 end
 
 -- Gold Pan Used Success
@@ -384,32 +411,58 @@ AddEventHandler('bcc-goldpanning:goldPanfailure', function()
     notify('noPan')
 end)
 
--- Mud Bucket Used Success
+-- Mud Bucket: Pour (at table)
 RegisterNetEvent('bcc-goldpanning:mudBucketUsedSuccess')
 AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     notify('usedMudBucket')
-    PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
-    stage = "waterBucket"
-    ResetActivePrompts()
+    local playerPed = PlayerPedId()
+    FreezeEntityPosition(playerPed, true)
+    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
+    Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
+        if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
+            Wait(500) -- Let the scenario finish naturally
+            ClearPedTasks(playerPed)
+        end
+        FreezeEntityPosition(playerPed, false)
+        stage = "waterBucket"
+        ResetActivePrompts()
+    end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
+        'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
 end)
 
--- Mud Bucket Used Failure
+-- Mud Bucket: Failure
 RegisterNetEvent('bcc-goldpanning:mudBucketUsedfailure')
 AddEventHandler('bcc-goldpanning:mudBucketUsedfailure', function()
     notify('dontHaveMudBucket')
-end)
-
--- Water Used Success
-RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
-AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
-    notify('usedWaterBucket')
-    PlayAnim("script_re", "bucket_fill_scoop", 3000, false, false)
-    stage = "goldPan"
+    stage = "mudBucket"
     ResetActivePrompts()
 end)
 
--- Water Used Failure
+-- Water Bucket: Pour (at table)
+RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
+AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
+    notify('usedWaterBucket')
+    local playerPed = PlayerPedId()
+    FreezeEntityPosition(playerPed, true)
+    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
+    Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
+        -- Only clear tasks if not cancelled and player is still valid
+        if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
+            -- Wait a short moment to let the scenario finish naturally
+            Wait(500)
+            ClearPedTasks(playerPed)
+        end
+        FreezeEntityPosition(playerPed, false)
+        stage = "goldPan"
+        ResetActivePrompts()
+    end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
+        'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
+end)
+
+-- Water Bucket: Failure
 RegisterNetEvent('bcc-goldpanning:waterUsedfailure')
 AddEventHandler('bcc-goldpanning:waterUsedfailure', function()
     notify('dontHaveWaterBucket')
+    stage = "waterBucket"
+    ResetActivePrompts()
 end)

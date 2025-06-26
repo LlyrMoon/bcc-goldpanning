@@ -3,6 +3,31 @@
 local VORPcore = exports.vorp_core:GetCore()
 local goldPanUse = {}
 
+-- Config Debugging
+local Config = Config or {}
+Config.debug = Config.debug or false -- Set to true for debug logging
+local function debugLog(msg)
+    if Config.debug then
+        print("[GoldPanning][DEBUG] " .. tostring(msg))
+    end
+end
+-- ingame Debugging command- allows toggling from inserver console
+-- Usage: /golddebug on or /golddebug off
+RegisterCommand("golddebug", function(source, args, raw)
+    if source ~= 0 then -- Only allow from server console or add admin check here
+        print("You do not have permission to use this command.")
+        return
+    end
+    if args[1] == "on" then
+        Config.debug = true
+        print("[GoldPanning] Debug mode ENABLED.")
+    elseif args[1] == "off" then
+        Config.debug = false
+        print("[GoldPanning] Debug mode DISABLED.")
+    else
+        print("[GoldPanning] Usage: /golddebug [on|off]")
+    end
+end, false)
 -- Whitelist for valid prop and item names (add more as needed)
 local validProps = {
     [Config.goldwashProp] = true
@@ -25,7 +50,8 @@ local function giveItem(_source, item, count, meta)
     end)
     if not success then
         print(("[GoldPanning] Failed to give item %s to %s: %s"):format(item, _source, err))
-        notify(_source, 'inventoryError')
+        notify(_source, 'inventoryScriptError')
+        debugLog(("Failed to give %s to %s: %s"):format(item, _source, err))
     end
 end
 
@@ -36,7 +62,8 @@ local function takeItem(_source, item, count, meta)
     end)
     if not success then
         print(("[GoldPanning] Failed to remove item %s from %s: %s"):format(item, _source, err))
-        notify(_source, 'inventoryError')
+        notify(_source, 'inventoryScriptError')
+        debugLog(("Failed to remove %s from %s: %s"):format(item, _source, err))
     end
 end
 
@@ -47,6 +74,7 @@ local function canCarry(_source, item, count)
     end)
     if not success then
         print(("[GoldPanning] Error in canCarry: %s"):format(result))
+        debugLog(("canCarry error for %s: %s"):format(_source, result))
         return false
     end
     return result
@@ -54,7 +82,11 @@ end
 
 -- Utility: Notify a player with a localized message
 local function notify(_source, messageKey, duration)
-    VORPcore.NotifyRightTip(_source, _U(messageKey), duration or 3000)
+    local msg = _U(messageKey)
+    if not msg or msg == messageKey then
+        msg = "[Missing locale: " .. messageKey .. "]"
+    end
+    VORPcore.NotifyRightTip(_source, msg, duration or 3000)
 end
 
 -- Utility: Register a usable item and trigger a client event
@@ -70,10 +102,13 @@ end
 local function handleBucketFill(_source, inputItem, outputItem, notifyMsg, denyMsg)
     if canCarry(_source, outputItem, 1) then
         takeItem(_source, inputItem, 1)
+        notify(_source, 'removed_' .. inputItem) -- New: notify removal
         giveItem(_source, outputItem, 1)
         notify(_source, notifyMsg)
+        debugLog(("Player %s filled %s to get %s"):format(_source, inputItem, outputItem))
     else
         notify(_source, denyMsg)
+        debugLog(("Player %s could not carry %s"):format(_source, outputItem))
     end
 end
 
@@ -82,16 +117,20 @@ local function useItemAndReturnEmpty(_source, itemFull, itemEmpty, useMsg, recei
     local count = exports.vorp_inventory:getItemCount(_source, nil, itemFull)
     if not canCarry(_source, itemEmpty, 1) then
         notify(_source, 'cannotCarryMoreMudBuckets')
+        debugLog(("Player %s cannot carry more %s"):format(_source, itemEmpty))
         return
     end
     if count > 0 then
         takeItem(_source, itemFull, 1)
         notify(_source, useMsg)
+        debugLog(("Player %s used %s"):format(_source, itemFull))
         giveItem(_source, itemEmpty, 1)
         notify(_source, receiveMsg)
+        debugLog(("Player %s received %s"):format(_source, itemEmpty))
         TriggerClientEvent(successEvent, _source)
     else
         notify(_source, failMsg)
+        debugLog(("Player %s failed to use %s (not enough)"):format(_source, itemFull))
         TriggerClientEvent(failureEvent, _source)
     end
 end
@@ -160,7 +199,10 @@ AddEventHandler('bcc-goldpanning:usegoldPan', function()
     end
 
     TriggerClientEvent('bcc-goldpanning:goldPanUsedSuccess', _source)
-    goldPanUse[_source] = os.time() -- Used to limit pan success call timing
+    goldPanUse[_source] = true
+    Citizen.SetTimeout(PAN_SUCCESS_TIMEOUT * 1000, function()
+        goldPanUse[_source] = nil
+    end)
 end)
 
 -- Prop placement: Broadcasts prop placement to all clients, with validation
@@ -179,16 +221,31 @@ local PAN_SUCCESS_TIMEOUT = 30 -- seconds
 RegisterServerEvent('bcc-goldpanning:panSuccess')
 AddEventHandler('bcc-goldpanning:panSuccess', function()
     local _source = source
-    if not goldPanUse[_source] or os.time() - goldPanUse[_source] > PAN_SUCCESS_TIMEOUT then
+    if not goldPanUse[_source] then
         print("[WARNING] Player " .. _source .. " triggered panSuccess without recent goldPan use.")
         return
     end
 
-    if canCarry(_source, Config.goldWashReward, Config.goldWashRewardAmount) then
+    local canCarry = exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
+    if not canCarry then
+        -- Try to add one at a time
+        local added = 0
+        for i = 1, Config.goldWashRewardAmount do
+            if exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, 1) then
+                exports.vorp_inventory:addItem(_source, Config.goldWashReward, 1)
+                added = added + 1
+            else
+                break
+            end
+        end
+        if added > 0 then
+            notify(_source, 'receivedGoldFlakes')
+        else
+            notify(_source, 'cantCarryMoreGoldFlakes')
+        end
+    else
         giveItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
         notify(_source, 'receivedGoldFlakes')
-    else
-        notify(_source, 'cantCarryMoreGoldFlakes')
     end
 
     if math.random(100) <= Config.extraRewardChance then
