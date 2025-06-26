@@ -64,7 +64,8 @@ AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
             end
             ClearPedTasksImmediately(playerPed)
             FreezeEntityPosition(playerPed, false)
-            TriggerServerEvent('bcc-goldpanning:mudBuckets')
+            TriggerServerEvent('bcc-goldpanning:fillBucket',
+    Config.emptyMudBucket, Config.mudBucket, 'receivedMudBucket', 'cannotCarryMoreMudBuckets')
         end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
             'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
@@ -86,7 +87,8 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
             end
             ClearPedTasksImmediately(playerPed)
             FreezeEntityPosition(playerPed, false)
-            TriggerServerEvent('bcc-goldpanning:waterBuckets')
+            TriggerServerEvent('bcc-goldpanning:fillBucket',
+    Config.emptyWaterBucket, Config.waterBucket, 'receivedWaterBucket', 'cantCarryMoreWaterBuckets')
         end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
             'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
@@ -159,11 +161,15 @@ CreateThread(function()
                         removeTablePrompt:TogglePrompt(activePrompts.removeTable)
 
                         if stage == "mudBucket" and useMudBucketPrompt:HasCompleted() and activePrompts.mudBucket then
-                            TriggerServerEvent('bcc-goldpanning:useMudBucket')
+                            TriggerServerEvent('bcc-goldpanning:useBucket',
+                                Config.mudBucket, Config.emptyMudBucket, 'usedMudBucket', 'receivedEmptyMudBucket', 'cannotCarryMoreMudBuckets',
+                                'bcc-goldpanning:mudBucketUsedSuccess', 'bcc-goldpanning:mudBucketUsedfailure')
                             activePrompts.mudBucket = false
                         end
                         if stage == "waterBucket" and useWaterBucketPrompt:HasCompleted() and activePrompts.waterBucket then
-                            TriggerServerEvent('bcc-goldpanning:useWaterBucket')
+                            TriggerServerEvent('bcc-goldpanning:useBucket',
+                                Config.waterBucket, Config.emptyWaterBucket, 'usedWaterBucket', 'receivedEmptyWaterBucket', 'cantCarryMoreEmptyWaterCans',
+                                'bcc-goldpanning:waterUsedSuccess', 'bcc-goldpanning:waterUsedfailure')
                             activePrompts.waterBucket = false
                         end
                         if stage == "goldPan" and useGoldPanPrompt:HasCompleted() and activePrompts.goldPan then
