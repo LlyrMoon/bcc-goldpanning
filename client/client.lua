@@ -44,10 +44,20 @@ end
 --Clean up stubborn buckets
 local function RemoveBucketProp()
     local playerPed = PlayerPedId()
-    local prop = GetClosestObjectOfType(GetEntityCoords(playerPed), 3.0, GetHashKey("p_wateringcan01x"), false, false, false)
-    if prop ~= 0 then
-        DeleteObject(prop)
-    end
+    local playerCoords = GetEntityCoords(playerPed)
+    local model = GetHashKey("p_wateringcan01x")
+    local handle, obj = FindFirstObject()
+    local success
+    repeat
+        if obj ~= 0 and GetEntityModel(obj) == model then
+            local objCoords = GetEntityCoords(obj)
+            if #(playerCoords - objCoords) < 3.0 then
+                DeleteObject(obj)
+            end
+        end
+        success, obj = FindNextObject(handle)
+    until not success
+    EndFindObject(handle)
 end
 
 -- Handlers for using empty mud bucket and empty water bucket from inventory
