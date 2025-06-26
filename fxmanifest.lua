@@ -7,9 +7,9 @@ author 'BCC @Fistsofury'
 description 'Indepth Goldpanning script by BCC'
 
 shared_scripts {
-    'config.lua',         -- 1. Config first
-    'languages/*.lua',    -- 2. All language files
-    'locale.lua'          -- 3. Locale loader (must come after languages)
+    'config.lua',
+    'locale.lua',        -- <--- define Locales first!
+    'languages/*.lua'
 }
 
 server_scripts {

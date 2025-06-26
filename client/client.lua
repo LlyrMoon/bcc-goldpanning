@@ -173,6 +173,8 @@ CreateThread(function()
                             activePrompts.waterBucket = false
                         end
                         if stage == "goldPan" and useGoldPanPrompt:HasCompleted() and activePrompts.goldPan then
+                            -- SET THE goldPanUse FLAG ON THE SERVER
+                            TriggerServerEvent('bcc-goldpanning:usegoldPan')
                             MiniGame.Start('skillcheck', Config.Minigame, function(result)
                                 if result.passed then
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, true)
