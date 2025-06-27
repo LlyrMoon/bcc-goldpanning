@@ -71,7 +71,7 @@ local function RemoveBucketProp()
     repeat
         if obj ~= 0 and GetEntityModel(obj) == model then
             local objCoords = GetEntityCoords(obj)
-            if #(playerCoords - objCoords) < 3.0 then
+            if #(playerCoords - objCoords) < 10.0 then -- instead of 3.0
                 DeleteObject(obj)
             end
         end
@@ -207,14 +207,24 @@ CreateThread(function()
                             TriggerServerEvent('bcc-goldpanning:usegoldPan')
                             MiniGame.Start('skillcheck', Config.Minigame, function(result)
                                 if result.passed then
-                                    RemoveBucketProp() -- Remove any held bucket prop
-                                    AttachGoldPanProp() -- Attach the pan before animation
+                                    -- Clear any scenario/animation and detach all props
+                                    local playerPed = PlayerPedId()
+                                    ClearPedTasksImmediately(playerPed)
+                                    RemoveBucketProp() -- Remove any bucket prop in the area
+
+                                    -- (Optional) Detach any entity from hand bone
+                                    DetachEntity(playerPed, true, true)
+
+                                    -- Attach the gold pan prop
+                                    AttachGoldPanProp()
+
+                                    -- Play the gold panning animation
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, false, false)
                                     Wait(Config.goldWashTime / 2)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
                                     VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000)
                                     Wait(Config.goldWashTime / 2)
-                                    RemoveGoldPanProp() -- Remove the pan after animation
+                                    RemoveGoldPanProp()
                                     stage = "mudBucket"
                                     ResetActivePrompts()
                                 else
