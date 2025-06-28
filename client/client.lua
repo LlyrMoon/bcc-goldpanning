@@ -65,19 +65,28 @@ end
 
 local function RemoveHeldBucketProp()
     local playerPed = PlayerPedId()
-    local model = GetHashKey("p_wateringcan01x")
+    local bucketModels = {
+        GetHashKey("p_wateringcan01x"),
+        GetHashKey("p_bucket02x"),
+        GetHashKey("p_bucket03x"),
+        GetHashKey("p_bucketfish01x"),
+        GetHashKey("s_bucketoblood01x")
+    }
     for obj in EnumerateObjects() do
-        if GetEntityModel(obj) == model and IsEntityAttachedToEntity(obj, playerPed) then
-            if NetworkGetEntityIsNetworked(obj) then
-                NetworkRequestControlOfEntity(obj)
-                local timeout = 0
-                while not NetworkHasControlOfEntity(obj) and timeout < 50 do
-                    Wait(10)
-                    timeout = timeout + 1
+        local objModel = GetEntityModel(obj)
+        for _, model in ipairs(bucketModels) do
+            if objModel == model and IsEntityAttachedToEntity(obj, playerPed) then
+                if NetworkGetEntityIsNetworked(obj) then
+                    NetworkRequestControlOfEntity(obj)
+                    local timeout = 0
+                    while not NetworkHasControlOfEntity(obj) and timeout < 50 do
+                        Wait(10)
+                        timeout = timeout + 1
+                    end
                 end
+                DetachEntity(obj, true, true)
+                DeleteObject(obj)
             end
-            DetachEntity(obj, true, true)
-            DeleteObject(obj)
         end
     end
 end
