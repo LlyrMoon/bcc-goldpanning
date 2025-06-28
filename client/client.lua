@@ -68,6 +68,15 @@ local function RemoveHeldBucketProp()
     local model = GetHashKey("p_wateringcan01x")
     for obj in EnumerateObjects() do
         if GetEntityModel(obj) == model and IsEntityAttachedToEntity(obj, playerPed) then
+            if NetworkGetEntityIsNetworked(obj) then
+                NetworkRequestControlOfEntity(obj)
+                local timeout = 0
+                while not NetworkHasControlOfEntity(obj) and timeout < 50 do
+                    Wait(10)
+                    timeout = timeout + 1
+                end
+            end
+            DetachEntity(obj, true, true)
             DeleteObject(obj)
         end
     end
@@ -487,10 +496,12 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500) -- Let the scenario finish naturally
             ClearPedTasks(playerPed)
+            Wait(100)
             RemoveHeldBucketProp()
             RemoveBucketProp() 
         end
         FreezeEntityPosition(playerPed, false)
+        Wait(100)
         RemoveHeldBucketProp()
         RemoveBucketProp()
         stage = "waterBucket"
@@ -517,10 +528,12 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500)
             ClearPedTasks(playerPed)
+            Wait(100) -- Add a short wait before cleanup
             RemoveHeldBucketProp()
             RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
+        Wait(100)
         RemoveHeldBucketProp()
         RemoveBucketProp() -- <--- Add here as well, to ensure cleanup
         stage = "goldPan"
