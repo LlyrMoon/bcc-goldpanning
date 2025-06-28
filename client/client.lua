@@ -477,7 +477,7 @@ end
 RegisterNetEvent('bcc-goldpanning:goldPanUsedSuccess')
 AddEventHandler('bcc-goldpanning:goldPanUsedSuccess', function()
     notify('goldPanUsed')
-    PlayAnim("script_re", "gold_panner_scoop", 4000, true, false)
+    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", 4000, true, false)
 end)
 
 -- Gold Pan Failure
@@ -489,21 +489,15 @@ end)
 -- Mud Bucket: Pour (at table)
 RegisterNetEvent('bcc-goldpanning:mudBucketUsedSuccess')
 AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
-        local playerPed = PlayerPedId()
+    local playerPed = PlayerPedId()
     FreezeEntityPosition(playerPed, true)
-    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
     Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            Wait(500) -- Let the scenario finish naturally
+            TaskStartScenarioInPlace(playerPed, joaat('WORLD_CAMP_JACK_ES_BUCKET_POUR_MALE_A'), -1, true, false, false, false)
+            Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
-            Wait(100)
-            RemoveHeldBucketProp()
-            RemoveBucketProp() 
         end
         FreezeEntityPosition(playerPed, false)
-        Wait(100)
-        RemoveHeldBucketProp()
-        RemoveBucketProp()
         stage = "waterBucket"
         ResetActivePrompts()
     end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
@@ -523,19 +517,13 @@ RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
 AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     local playerPed = PlayerPedId()
     FreezeEntityPosition(playerPed, true)
-    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            Wait(500)
+            TaskStartScenarioInPlace(playerPed, joaat('WORLD_CAMP_JACK_ES_BUCKET_POUR_MALE_A'), -1, true, false, false, false)
+            Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
-            Wait(100) -- Add a short wait before cleanup
-            RemoveHeldBucketProp()
-            RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
-        Wait(100)
-        RemoveHeldBucketProp()
-        RemoveBucketProp() -- <--- Add here as well, to ensure cleanup
         stage = "goldPan"
         ResetActivePrompts()
     end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
