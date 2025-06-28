@@ -63,6 +63,31 @@ local function RemoveBucketProp()
     EndFindObject(handle)
 end
 
+local function RemoveHeldBucketProp()
+    local playerPed = PlayerPedId()
+    local model = GetHashKey("p_wateringcan01x")
+    for obj in EnumerateObjects() do
+        if GetEntityModel(obj) == model and IsEntityAttachedToEntity(obj, playerPed) then
+            DeleteObject(obj)
+        end
+    end
+end
+
+function EnumerateObjects()
+    return coroutine.wrap(function()
+        local handle, object = FindFirstObject()
+        if not handle or handle == -1 then
+            return
+        end
+        local finished = false
+        repeat
+            coroutine.yield(object)
+            finished, object = FindNextObject(handle)
+        until not finished
+        EndFindObject(handle)
+    end)
+end
+
 -- Handlers for using empty mud bucket and empty water bucket from inventory
 RegisterNetEvent('bcc-goldpanning:useEmptyMudBucket')
 AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
@@ -193,6 +218,7 @@ CreateThread(function()
                                     -- Clear any scenario/animation and detach all props
                                     local playerPed = PlayerPedId()
                                     ClearPedTasksImmediately(playerPed)
+                                    RemoveHeldBucketProp()
                                     RemoveBucketProp() -- Remove any bucket prop in the area
 
                                     -- (Optional) Detach any entity from hand bone
@@ -461,9 +487,11 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500) -- Let the scenario finish naturally
             ClearPedTasks(playerPed)
+            RemoveHeldBucketProp()
             RemoveBucketProp() 
         end
         FreezeEntityPosition(playerPed, false)
+        RemoveHeldBucketProp()
         RemoveBucketProp()
         stage = "waterBucket"
         ResetActivePrompts()
@@ -489,9 +517,11 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500)
             ClearPedTasks(playerPed)
+            RemoveHeldBucketProp()
             RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
+        RemoveHeldBucketProp()
         RemoveBucketProp() -- <--- Add here as well, to ensure cleanup
         stage = "goldPan"
         ResetActivePrompts()
