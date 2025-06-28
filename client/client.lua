@@ -44,23 +44,6 @@ end
 -- Gold Pan Handling
 local goldPanObj = nil
 
-local function AttachGoldPanProp()
-    local playerPed = PlayerPedId()
-    if goldPanObj and DoesEntityExist(goldPanObj) then
-        DeleteObject(goldPanObj)
-    end
-    local coords = GetEntityCoords(playerPed)
-    goldPanObj = CreateObject(GetHashKey("p_copperpan02x"), coords.x, coords.y, coords.z, true, true, false)
-    AttachEntityToEntity(goldPanObj, playerPed, GetEntityBoneIndexByName(playerPed, "PH_R_Hand"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
-end
-
-local function RemoveGoldPanProp()
-    if goldPanObj and DoesEntityExist(goldPanObj) then
-        DeleteObject(goldPanObj)
-        goldPanObj = nil
-    end
-end
-
 --Clean up stubborn buckets
 local function RemoveBucketProp()
     local playerPed = PlayerPedId()
@@ -214,17 +197,11 @@ CreateThread(function()
 
                                     -- (Optional) Detach any entity from hand bone
                                     DetachEntity(playerPed, true, true)
-
-                                    -- Attach the gold pan prop
-                                    AttachGoldPanProp()
-
-                                    -- Play the gold panning animation
-                                    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, false, false)
+                                    PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, false)
                                     Wait(Config.goldWashTime / 2)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
                                     VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000)
                                     Wait(Config.goldWashTime / 2)
-                                    RemoveGoldPanProp()
                                     stage = "mudBucket"
                                     ResetActivePrompts()
                                 else
@@ -484,9 +461,10 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             Wait(500) -- Let the scenario finish naturally
             ClearPedTasks(playerPed)
-            RemoveBucketProp() -- <--- Add this line here
+            RemoveBucketProp() 
         end
         FreezeEntityPosition(playerPed, false)
+        RemoveBucketProp()
         stage = "waterBucket"
         ResetActivePrompts()
     end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
@@ -514,6 +492,7 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
             RemoveBucketProp() -- <--- Add this line here
         end
         FreezeEntityPosition(playerPed, false)
+        RemoveBucketProp() -- <--- Add here as well, to ensure cleanup
         stage = "goldPan"
         ResetActivePrompts()
     end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw',
