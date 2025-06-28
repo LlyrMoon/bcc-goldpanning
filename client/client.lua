@@ -502,7 +502,7 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     FreezeEntityPosition(playerPed, true)
     Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            TaskStartScenarioInPlace(playerPed, joaat('WORLD_CAMP_JACK_ES_BUCKET_POUR_MALE_A'), -1, true, false, false, false)
+            TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
             Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
         end
@@ -528,7 +528,7 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     FreezeEntityPosition(playerPed, true)
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            TaskStartScenarioInPlace(playerPed, joaat('WORLD_CAMP_JACK_ES_BUCKET_POUR_MALE_A'), -1, true, false, false, false)
+            TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
             Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
         end
