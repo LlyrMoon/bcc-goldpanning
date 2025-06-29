@@ -19,6 +19,10 @@ local useWaterBucketPrompt = promptGroup:RegisterPrompt(_U('promptWaterBucket'),
 local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys.G, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
+-- Reset Ped Movement Clipset
+local function ResetPedMovementClipset(ped, blend)
+    Citizen.InvokeNative(0xAA74FC11F5FAFD96, ped, blend or 0.0)
+end
 -- IS NEAR WATER UTILITY
 local function IsNearWater()
     local playerPed = PlayerPedId()
