@@ -187,8 +187,10 @@ local function RemoveTable()
     if closestObj then
         DeleteEntity(closestObj)
         props[closestId] = nil
-        FreezeEntityPosition(PlayerPedId(), false) -- Always unfreeze after table removal
-        ClearPedTasksImmediately(PlayerPedId())    -- Always clear tasks after table removal
+        FreezeEntityPosition(PlayerPedId(), false)
+        ClearPedTasksImmediately(PlayerPedId())
+        ClearPedTasks(PlayerPedId())
+        ResetPedMovementClipset(PlayerPedId(), 0.0)
         TriggerServerEvent('bcc-goldpanning:checkCanCarry', Config.goldwashProp)
     else
         VORPcore.NotifyObjective(_U('noTableNearby'), 4000)
@@ -465,6 +467,8 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
                 DeleteObject(rakeObj)
             end
             ClearPedTasksImmediately(playerPed)
+            ClearPedTasks(playerPed)
+            ResetPedMovementClipset(playerPed, 0.0)
             isAnimating = false
         end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw', 'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
