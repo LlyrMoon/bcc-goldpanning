@@ -65,6 +65,7 @@ end
 
 local function RemoveHeldBucketProp()
     local playerPed = PlayerPedId()
+    local playerCoords = GetEntityCoords(playerPed)
     local bucketModels = {
         GetHashKey("p_wateringcan01x"),
         GetHashKey("p_bucket02x"),
@@ -75,7 +76,8 @@ local function RemoveHeldBucketProp()
     for obj in EnumerateObjects() do
         local objModel = GetEntityModel(obj)
         for _, model in ipairs(bucketModels) do
-            if objModel == model and IsEntityAttachedToEntity(obj, playerPed) then
+            local objCoords = GetEntityCoords(obj)
+            if objModel == model and #(playerCoords - objCoords) < 3.0 then
                 if NetworkGetEntityIsNetworked(obj) then
                     NetworkRequestControlOfEntity(obj)
                     local timeout = 0
@@ -84,6 +86,7 @@ local function RemoveHeldBucketProp()
                         timeout = timeout + 1
                     end
                 end
+                SetEntityAsMissionEntity(obj, true, true)
                 DetachEntity(obj, true, true)
                 DeleteObject(obj)
             end
@@ -119,6 +122,8 @@ AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
                 return
             end
             ClearPedTasksImmediately(playerPed)
+            Wait(100)
+            RemoveHeldBucketProp()
             FreezeEntityPosition(playerPed, false)
             TriggerServerEvent('bcc-goldpanning:fillBucket',
     Config.emptyMudBucket, Config.mudBucket, 'receivedMudBucket', 'cannotCarryMoreMudBuckets')
@@ -142,6 +147,8 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
                 return
             end
             ClearPedTasksImmediately(playerPed)
+            Wait(100)
+            RemoveHeldBucketProp()
             FreezeEntityPosition(playerPed, false)
             TriggerServerEvent('bcc-goldpanning:fillBucket',
     Config.emptyWaterBucket, Config.waterBucket, 'receivedWaterBucket', 'cantCarryMoreWaterBuckets')
@@ -180,6 +187,8 @@ local function RemoveTable()
     if closestObj then
         DeleteEntity(closestObj)
         props[closestId] = nil
+        FreezeEntityPosition(PlayerPedId(), false) -- Always unfreeze after table removal
+        ClearPedTasksImmediately(PlayerPedId())    -- Always clear tasks after table removal
         TriggerServerEvent('bcc-goldpanning:checkCanCarry', Config.goldwashProp)
     else
         VORPcore.NotifyObjective(_U('noTableNearby'), 4000)
@@ -236,6 +245,7 @@ CreateThread(function()
                                     -- Clear any scenario/animation and detach all props
                                     local playerPed = PlayerPedId()
                                     ClearPedTasksImmediately(playerPed)
+                                    Wait(100)
                                     RemoveHeldBucketProp()
                                     RemoveBucketProp() -- Remove any bucket prop in the area
 
@@ -244,8 +254,9 @@ CreateThread(function()
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, false)
                                     Wait(Config.goldWashTime / 2)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
-                                    VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000)
+                                    if Config.debug then VORPcore.NotifyObjective("[DEBUG] Triggered panSuccess event", 4000) end
                                     Wait(Config.goldWashTime / 2)
+                                    FreezeEntityPosition(playerPed, false)
                                     stage = "mudBucket"
                                     ResetActivePrompts()
                                 else
@@ -500,11 +511,12 @@ RegisterNetEvent('bcc-goldpanning:mudBucketUsedSuccess')
 AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     local playerPed = PlayerPedId()
     FreezeEntityPosition(playerPed, true)
+    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
     Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
-            Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
+            Wait(100)
+            RemoveHeldBucketProp()
         end
         FreezeEntityPosition(playerPed, false)
         stage = "waterBucket"
@@ -526,11 +538,13 @@ RegisterNetEvent('bcc-goldpanning:waterUsedSuccess')
 AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     local playerPed = PlayerPedId()
     FreezeEntityPosition(playerPed, true)
+    TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), -1, true, false, false, false)
-            Wait(Config.bucketingTime)
             ClearPedTasks(playerPed)
+            Wait(100)
+            RemoveHeldBucketProp()
+            FreezeEntityPosition(playerPed, false)
         end
         FreezeEntityPosition(playerPed, false)
         stage = "goldPan"
