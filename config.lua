@@ -13,14 +13,14 @@ Config.emptyMudBucket = "empty_mud_bucket" --Item to give back after use
 Config.useWaterItems = true --Set to false if you have a river script
 Config.waterBucket = "wateringcan" --!!!IF YOU USE A RIVER OR WATER SCRIPT AND MATCH THE ITEM NAMES!!!
 Config.emptyWaterBucket = "wateringcan_empty" --!!!IF YOU TO USE A RIVER OR WATER SCRIPT AND MATCH THE ITEM NAMES!!!
-Config.bucketingTime = 8000 --Time to collect and use buckets
+Config.bucketingTime = 4000 --Time to collect and use buckets
 
 --Gold Washing--
 Config.goldwashProp = "p_goldcradlestand01x" --Prop & DB item name (NOT LABLE)
 Config.goldSiftingProp = "p_copperpan02x" --Prop to use for sifting line 298 of client to change bones etc
 Config.goldPan = "goldpan" --Item name needed
 Config.washBuildTime = 8000 --Time to build the wash station
-Config.goldWashTime = 8000 -- Time To Pan
+Config.goldWashTime = 6000 -- Time To Pan
 Config.goldWashReward = "gold_flakes" --Item to give
 Config.goldWashRewardAmount = 5 --Amount of reward to give
 -----------------------------------
