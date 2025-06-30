@@ -45,9 +45,6 @@ local function IsNearWater()
     return true
 end
 
--- Gold Pan Handling
-local goldPanObj = nil
-
 --Clean up stubborn buckets
 local function RemoveBucketProp()
     local playerPed = PlayerPedId()
@@ -257,10 +254,7 @@ CreateThread(function()
                                     ClearPedTasksImmediately(playerPed)
                                     Wait(100)
                                     RemoveHeldBucketProp()
-                                    RemoveBucketProp() -- Remove any bucket prop in the area
-
-                                    -- (Optional) Detach any entity from hand bone
-                                    DetachEntity(playerPed, true, true)
+                                    RemoveBucketProp()
                                     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, false)
                                     Wait(Config.goldWashTime / 2)
                                     TriggerServerEvent('bcc-goldpanning:panSuccess')
@@ -457,13 +451,11 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
     local animTime = time
     local flag = loopUntilTimeOver and 1 or 16
 
-    -- Request animation dictionary only once
     RequestAnimDict(animDict)
     while not HasAnimDictLoaded(animDict) do
         Wait(50)
     end
 
-    -- Play animation
     TaskPlayAnim(playerPed, animDict, animName, 1.0, 1.0, loopUntilTimeOver and -1 or animTime, flag, 0, true, 0, false, 0, false)
 
     if raking then
@@ -483,6 +475,8 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
     else
         Wait(time)
         ClearPedTasksImmediately(playerPed)
+        ClearPedTasks(playerPed)
+        ResetPedMovementClipset(playerPed, 0.0)
         isAnimating = false
     end
 end
@@ -510,6 +504,7 @@ end
 RegisterNetEvent('bcc-goldpanning:goldPanUsedSuccess')
 AddEventHandler('bcc-goldpanning:goldPanUsedSuccess', function()
     notify('goldPanUsed')
+    local playerPed = PlayerPedId() -- FIX: define playerPed
     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, false)
     Wait(Config.goldWashTime)
     ClearPedTasksImmediately(playerPed)
