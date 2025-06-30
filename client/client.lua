@@ -467,16 +467,24 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
             if DoesEntityExist(rakeObj) then
                 DeleteObject(rakeObj)
             end
-            ClearPedTasksImmediately(playerPed)
             ClearPedTasks(playerPed)
+            Wait(50)
+            ClearPedTasksImmediately(playerPed)
+            Wait(100)
+            RemoveHeldBucketProp()
             ResetPedMovementClipset(playerPed, 0.0)
+            FreezeEntityPosition(playerPed, false)
             isAnimating = false
         end, 'linear', 'rgba(255, 255, 255, 0.8)', '20vw', 'rgba(255, 255, 255, 0.1)', 'rgba(211, 211, 211, 0.5)')
     else
         Wait(time)
-        ClearPedTasksImmediately(playerPed)
         ClearPedTasks(playerPed)
+        Wait(50)
+        ClearPedTasksImmediately(playerPed)
+        Wait(100)
+        RemoveHeldBucketProp()
         ResetPedMovementClipset(playerPed, 0.0)
+        FreezeEntityPosition(playerPed, false)
         isAnimating = false
     end
 end
@@ -504,13 +512,10 @@ end
 RegisterNetEvent('bcc-goldpanning:goldPanUsedSuccess')
 AddEventHandler('bcc-goldpanning:goldPanUsedSuccess', function()
     notify('goldPanUsed')
-    local playerPed = PlayerPedId() -- FIX: define playerPed
+    local playerPed = PlayerPedId()
     PlayAnim("script_re@gold_panner@gold_success", "panning_idle", Config.goldWashTime, true, false)
-    Wait(Config.goldWashTime)
-    ClearPedTasksImmediately(playerPed)
-    ClearPedTasks(playerPed)
-    ResetPedMovementClipset(playerPed, 0.0)
-    FreezeEntityPosition(playerPed, false)
+    -- REMOVED the Wait and cleanup here!
+    -- All cleanup is handled inside PlayAnim's progressbar callback
 end)
 
 -- Gold Pan Failure
@@ -528,7 +533,9 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
         local playerPed = PlayerPedId()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            ClearPedTasks(playerPed)
+            ClearPedTasks(playerPed)            -- Attempt graceful stop
+            Wait(50)                            -- (Optional) Give a short moment for graceful stop
+            ClearPedTasksImmediately(playerPed)
             Wait(100)
             RemoveHeldBucketProp()
             ResetPedMovementClipset(playerPed, 0.0)
@@ -557,7 +564,9 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
         local playerPed = PlayerPedId()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
-            ClearPedTasks(playerPed)
+            ClearPedTasks(playerPed)            -- Attempt graceful stop
+            Wait(50)                            -- (Optional) Give a short moment for graceful stop
+            ClearPedTasksImmediately(playerPed) 
             Wait(100)
             RemoveHeldBucketProp()
             ResetPedMovementClipset(playerPed, 0.0)
