@@ -59,8 +59,9 @@ local function giveItem(_source, item, count, meta)
         print(("[GoldPanning] Failed to give item %s to %s: %s"):format(item, _source, err))
         notify(_source, 'inventoryScriptError')
         debugLog(("Failed to give %s to %s: %s"):format(item, _source, err))
-        -- DEBUG NOTIFICATION TO PLAYER
-        VORPcore.NotifyRightTip(_source, "[DEBUG] Failed to give item: " .. tostring(item) .. " (" .. tostring(err) .. ")", 6000)
+        if Config.debug then
+            VORPcore.NotifyRightTip(_source, "[DEBUG] Failed to give item: " .. tostring(item) .. " (" .. tostring(err) .. ")", 6000)
+        end
     end
 end
 
@@ -201,11 +202,15 @@ RegisterServerEvent('bcc-goldpanning:panSuccess')
 AddEventHandler('bcc-goldpanning:panSuccess', function()
     local _source = source
     -- Debug: Show goldPanUse flag and item name
-    VORPcore.NotifyRightTip(_source, "[DEBUG] goldPanUse: " .. tostring(goldPanUse[_source]), 4000)
-    VORPcore.NotifyRightTip(_source, "[DEBUG] Reward: " .. tostring(Config.goldWashReward) .. " x" .. tostring(Config.goldWashRewardAmount), 4000)
+    if Config.debug then
+        VORPcore.NotifyRightTip(_source, "[DEBUG] goldPanUse: " .. tostring(goldPanUse[_source]), 4000)
+        VORPcore.NotifyRightTip(_source, "[DEBUG] Reward: " .. tostring(Config.goldWashReward) .. " x" .. tostring(Config.goldWashRewardAmount), 4000)
+    end
     -- Debug: Can carry?
     local canCarry = exports.vorp_inventory:canCarryItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
-    VORPcore.NotifyRightTip(_source, "[DEBUG] canCarry: " .. tostring(canCarry), 4000)
+    if Config.debug then
+        VORPcore.NotifyRightTip(_source, "[DEBUG] canCarry: " .. tostring(canCarry), 4000)
+    end
 
     if canCarry and goldPanUse[_source] then
         exports.vorp_inventory:addItem(_source, Config.goldWashReward, Config.goldWashRewardAmount)
@@ -218,7 +223,7 @@ AddEventHandler('bcc-goldpanning:panSuccess', function()
         if not canCarry then
             VORPcore.NotifyRightTip(_source, "[DEBUG] Cannot carry gold flakes.", 4000)
         end
-        if not goldPanUse[_source] then
+        if Config.debug and not goldPanUse[_source] then
             VORPcore.NotifyRightTip(_source, "[DEBUG] goldPanUse flag not set.", 4000)
         end
     end
