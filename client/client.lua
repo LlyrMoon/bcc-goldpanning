@@ -20,7 +20,7 @@ local useGoldPanPrompt = promptGroup:RegisterPrompt(_U('promptPan'), Config.keys
 local removeTablePrompt = promptGroup:RegisterPrompt(_U('promptPickUp'), Config.keys.F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
 -- Reset Ped Movement Clipset
-local function ResetPedMovementClipset(ped, blend)
+function ResetPedMovementClipset(ped, blend)
     Citizen.InvokeNative(0xAA74FC11F5FAFD96, ped, blend or 0.0)
 end
 -- IS NEAR WATER UTILITY
@@ -121,6 +121,7 @@ AddEventHandler('bcc-goldpanning:useEmptyMudBucket', function()
         FreezeEntityPosition(playerPed, true)
         TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_FILL'), Config.bucketingTime, true, false, false, false)
         Progressbar.start(_U('collectingMud'), Config.bucketingTime, function(cancelled)
+            local playerPed = PlayerPedId()
             if cancelled or not DoesEntityExist(playerPed) or IsEntityDead(playerPed) then
                 FreezeEntityPosition(playerPed, false)
                 return
@@ -147,6 +148,7 @@ AddEventHandler('bcc-goldpanning:useWaterBucket', function()
         FreezeEntityPosition(playerPed, true)
         TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_FILL'), Config.bucketingTime, true, false, false, false)
         Progressbar.start(_U('collectingWater'), Config.bucketingTime, function(cancelled)
+            local playerPed = PlayerPedId()
             if cancelled or not DoesEntityExist(playerPed) or IsEntityDead(playerPed) then
                 FreezeEntityPosition(playerPed, false)
                 return
@@ -469,6 +471,7 @@ function PlayAnim(animDict, animName, time, raking, loopUntilTimeOver)
         local rakeObj = CreateObject(Config.goldSiftingProp, playerCoords.x, playerCoords.y, playerCoords.z, true, true, false)
         AttachEntityToEntity(rakeObj, playerPed, GetEntityBoneIndexByName(playerPed, "PH_R_Hand"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 0, true, false, false)
         Progressbar.start(_U('siftingGold'), time, function()
+            local playerPed = PlayerPedId()
             if DoesEntityExist(rakeObj) then
                 DeleteObject(rakeObj)
             end
@@ -528,6 +531,7 @@ AddEventHandler('bcc-goldpanning:mudBucketUsedSuccess', function()
     FreezeEntityPosition(playerPed, true)
     TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), Config.bucketingTime, true, false, false, false)
     Progressbar.start(_U('pouringMud'), Config.bucketingTime, function(cancelled)
+        local playerPed = PlayerPedId()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             ClearPedTasks(playerPed)
             Wait(100)
@@ -556,6 +560,7 @@ AddEventHandler('bcc-goldpanning:waterUsedSuccess', function()
     FreezeEntityPosition(playerPed, true)
     TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_BUCKET_POUR_LOW'), Config.bucketingTime, true, false, false, false)
     Progressbar.start(_U('pouringWater'), Config.bucketingTime, function(cancelled)
+        local playerPed = PlayerPedId()
         if not cancelled and DoesEntityExist(playerPed) and not IsEntityDead(playerPed) then
             ClearPedTasks(playerPed)
             Wait(100)
